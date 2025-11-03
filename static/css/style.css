@@ -29,7 +29,6 @@ body {
     height: 100%;
     top: 0;
     left: 0;
-    z-index: -1;
     background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
 }
 
