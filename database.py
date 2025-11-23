@@ -1,159 +1,271 @@
-import sqlite3
-from werkzeug.security import generate_password_hash
+import mysql.connector
+from mysql.connector import Error
+import os
+from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 
-def get_db_connection():
-    conn = sqlite3.connect('database.db')
-    conn.row_factory = sqlite3.Row
-    return conn
+class Database:
+    def __init__(self):
+        self.host = 'localhost'
+        self.user = 'root'
+        self.password = ''
+        self.database = 'sanpai_db'
+        self.connection = None
+        self.connect()
+        self.init_db()
 
-def init_db():
-    conn = get_db_connection()
-    
-    # Users table
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            is_admin INTEGER DEFAULT 0,
-            is_paid INTEGER DEFAULT 0,
-            profile_image TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Videos table
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS videos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            video_url TEXT NOT NULL,
-            title TEXT,
-            music_style TEXT NOT NULL,
-            music_file TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-    ''')
-    
-    # Login attempts table (for security)
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS login_attempts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT NOT NULL,
-            attempts INTEGER DEFAULT 0,
-            last_attempt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Create default admin user if not exists
-    admin_email = 'admin@reelcraft.ai'
-    admin_password = generate_password_hash('admin123')
-    
-    if not conn.execute('SELECT * FROM users WHERE email = ?', (admin_email,)).fetchone():
-        conn.execute(
-            'INSERT INTO users (name, email, password, is_admin, is_paid) VALUES (?, ?, ?, ?, ?)',
-            ('Admin User', admin_email, admin_password, 1, 1)
-        )
-    
-    conn.commit()
-    conn.close()
+    def connect(self):
+        """Establish database connection"""
+        try:
+            self.connection = mysql.connector.connect(
+                host=self.host,
+                user=self.user,
+                password=self.password,
+                database=self.database
+            )
+            if self.connection.is_connected():
+                print("✅ Connected to MySQL database")
+        except Error as e:
+            print(f"❌ Error connecting to MySQL: {e}")
+            self.create_database()
 
-def add_user(name, email, password, is_admin, is_paid):
-    conn = get_db_connection()
-    conn.execute(
-        'INSERT INTO users (name, email, password, is_admin, is_paid) VALUES (?, ?, ?, ?, ?)',
-        (name, email, password, is_admin, is_paid)
-    )
-    conn.commit()
-    conn.close()
+    def create_database(self):
+        """Create database and tables if they don't exist"""
+        try:
+            conn = mysql.connector.connect(
+                host=self.host,
+                user=self.user,
+                password=self.password
+            )
+            cursor = conn.cursor()
+            cursor.execute(f"CREATE DATABASE IF NOT EXISTS {self.database}")
+            cursor.close()
+            conn.close()
+            
+            self.connection = mysql.connector.connect(
+                host=self.host,
+                user=self.user,
+                password=self.password,
+                database=self.database
+            )
+            self.init_db()
+        except Error as e:
+            print(f"❌ Error creating database: {e}")
+
+    def init_db(self):
+        """Initialize database tables"""
+        try:
+            cursor = self.connection.cursor()
+            
+            # Users table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    is_admin BOOLEAN DEFAULT FALSE,
+                    is_paid BOOLEAN DEFAULT FALSE,
+                    login_attempts INT DEFAULT 0,
+                    last_attempt TIMESTAMP NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # Videos table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS videos (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    title VARCHAR(255) NOT NULL,
+                    video_url VARCHAR(500) NOT NULL,
+                    music_style VARCHAR(100),
+                    music_file VARCHAR(255),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            ''')
+            
+            # Create default admin user if not exists
+            admin_password_hash = generate_password_hash('admin123')
+            print(f"🔑 Creating admin user with hash: {admin_password_hash[:50]}...")
+            
+            cursor.execute('''
+                INSERT IGNORE INTO users (name, email, password_hash, is_admin, is_paid) 
+                VALUES (%s, %s, %s, %s, %s)
+            ''', ('Admin', 'admin@sanpai.com', admin_password_hash, True, True))
+            
+            self.connection.commit()
+            cursor.close()
+            print("✅ Database initialized successfully")
+            
+        except Error as e:
+            print(f"❌ Error initializing database: {e}")
+
+    def get_connection(self):
+        """Get database connection"""
+        if not self.connection or not self.connection.is_connected():
+            self.connect()
+        return self.connection
+
+# Create global database instance
+db = Database()
+
+# User functions
+def add_user(name, email, password_hash, is_admin=False, is_paid=False):
+    """Add a new user to the database"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO users (name, email, password_hash, is_admin, is_paid) VALUES (%s, %s, %s, %s, %s)",
+            (name, email, password_hash, is_admin, is_paid)
+        )
+        conn.commit()
+        cursor.close()
+        return True
+    except Error as e:
+        print(f"❌ Error adding user: {e}")
+        return False
 
 def get_user_by_email(email):
-    conn = get_db_connection()
-    user = conn.execute(
-        'SELECT * FROM users WHERE email = ?', (email,)
-    ).fetchone()
-    conn.close()
-    return user
+    """Get user by email"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        user = cursor.fetchone()
+        cursor.close()
+        return user
+    except Error as e:
+        print(f"❌ Error getting user: {e}")
+        return None
 
 def get_all_users():
-    conn = get_db_connection()
-    users = conn.execute('SELECT * FROM users').fetchall()
-    conn.close()
-    return users
-
-def get_all_videos():
-    conn = get_db_connection()
-    videos = conn.execute('''
-        SELECT videos.*, users.name as user_name 
-        FROM videos 
-        JOIN users ON videos.user_id = users.id
-    ''').fetchall()
-    conn.close()
-    return videos
-
-def get_videos_by_user(user_id):
-    conn = get_db_connection()
-    videos = conn.execute(
-        'SELECT * FROM videos WHERE user_id = ? ORDER BY created_at DESC', 
-        (user_id,)
-    ).fetchall()
-    conn.close()
-    return videos
-
-def add_video(user_id, video_url, music_style, title=None, music_file=None):
-    conn = get_db_connection()
-    conn.execute(
-        'INSERT INTO videos (user_id, video_url, music_style, title, music_file) VALUES (?, ?, ?, ?, ?)',
-        (user_id, video_url, music_style, title, music_file)
-    )
-    conn.commit()
-    conn.close()
+    """Get all users"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, name, email, is_admin, is_paid, created_at FROM users ORDER BY created_at DESC")
+        users = cursor.fetchall()
+        cursor.close()
+        return users
+    except Error as e:
+        print(f"❌ Error getting users: {e}")
+        return []
 
 def increment_login_attempts(email):
-    conn = get_db_connection()
-    attempt = conn.execute(
-        'SELECT * FROM login_attempts WHERE email = ?', (email,)
-    ).fetchone()
-    
-    if attempt:
-        conn.execute(
-            'UPDATE login_attempts SET attempts = attempts + 1, last_attempt = CURRENT_TIMESTAMP WHERE email = ?',
-            (email,)
+    """Increment login attempts for a user"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE users SET login_attempts = login_attempts + 1, last_attempt = %s WHERE email = %s",
+            (datetime.now(), email)
         )
-    else:
-        conn.execute(
-            'INSERT INTO login_attempts (email, attempts) VALUES (?, 1)',
-            (email,)
-        )
-    
-    conn.commit()
-    conn.close()
+        conn.commit()
+        cursor.close()
+        return True
+    except Error as e:
+        print(f"❌ Error incrementing login attempts: {e}")
+        return False
 
 def reset_login_attempts(email):
-    conn = get_db_connection()
-    conn.execute(
-        'DELETE FROM login_attempts WHERE email = ?',
-        (email,)
-    )
-    conn.commit()
-    conn.close()
+    """Reset login attempts for a user"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE users SET login_attempts = 0, last_attempt = NULL WHERE email = %s",
+            (email,)
+        )
+        conn.commit()
+        cursor.close()
+        return True
+    except Error as e:
+        print(f"❌ Error resetting login attempts: {e}")
+        return False
 
 def get_login_attempts(email):
-    conn = get_db_connection()
-    attempt = conn.execute(
-        'SELECT attempts FROM login_attempts WHERE email = ?', (email,)
-    ).fetchone()
-    conn.close()
-    
-    return attempt[0] if attempt else 0
+    """Get login attempts for a user"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT login_attempts FROM users WHERE email = %s", (email,))
+        result = cursor.fetchone()
+        cursor.close()
+        return result[0] if result else 0
+    except Error as e:
+        print(f"❌ Error getting login attempts: {e}")
+        return 0
 
 def update_payment_status(user_id, is_paid):
-    conn = get_db_connection()
-    conn.execute(
-        'UPDATE users SET is_paid = ? WHERE id = ?',
-        (is_paid, user_id)
-    )
-    conn.commit()
-    conn.close()
+    """Update user payment status"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE users SET is_paid = %s WHERE id = %s",
+            (bool(is_paid), user_id)
+        )
+        conn.commit()
+        cursor.close()
+        return True
+    except Error as e:
+        print(f"❌ Error updating payment status: {e}")
+        return False
+
+# Video functions
+def add_video(user_id, video_url, music_style, title, music_file=None):
+    """Add a new video to the database"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO videos (user_id, video_url, music_style, title, music_file) VALUES (%s, %s, %s, %s, %s)",
+            (user_id, video_url, music_style, title, music_file)
+        )
+        conn.commit()
+        cursor.close()
+        return True
+    except Error as e:
+        print(f"❌ Error adding video: {e}")
+        return False
+
+def get_videos_by_user(user_id):
+    """Get all videos for a user"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            "SELECT * FROM videos WHERE user_id = %s ORDER BY created_at DESC",
+            (user_id,)
+        )
+        videos = cursor.fetchall()
+        cursor.close()
+        return videos
+    except Error as e:
+        print(f"❌ Error getting user videos: {e}")
+        return []
+
+def get_all_videos():
+    """Get all videos from all users"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute('''
+            SELECT v.*, u.name as user_name, u.email as user_email 
+            FROM videos v 
+            JOIN users u ON v.user_id = u.id 
+            ORDER BY v.created_at DESC
+        ''')
+        videos = cursor.fetchall()
+        cursor.close()
+        return videos
+    except Error as e:
+        print(f"❌ Error getting all videos: {e}")
+        return []
+
+def init_db():
+    """Initialize database (for backward compatibility)"""
+    return db.init_db()

@@ -73,37 +73,6 @@
 
                     <button class="generate-btn" id="generate-btn">Generate Video</button>
                 </div>
-
-                <!-- Recent videos section -->
-                <div class="recent-videos">
-                    <h2>Your Recent Videos</h2>
-                    <div class="videos-grid" id="recent-videos-grid">
-                        {% if videos %}
-                            {% for video in videos[:4] %}
-                            <div class="video-card">
-                                <div class="video-thumbnail">
-                                    <div class="thumbnail-placeholder">
-                                        <i class="fas fa-play-circle"></i>
-                                    </div>
-                                    <button class="play-btn" data-video-url="{{ url_for('download_file', filename=video.video_url) }}" data-video-title="{{ video.title or 'Untitled Video' }}" data-video-date="{{ video.created_at }}" data-video-music="{{ video.music_style }}">
-                                        <i class="fas fa-play"></i>
-                                    </button>
-                                </div>
-                                <div class="video-info">
-                                    <h3 class="video-title">{{ video.title or "Untitled Video" }}</h3>
-                                    <p class="video-date">Created: {{ video.created_at[:10] }}</p>
-                                    <p class="video-music">Music: {{ video.music_style }}</p>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="video-placeholder">
-                                <i class="fas fa-film"></i>
-                                <p>You haven't created any videos yet</p>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
             </section>
 
             <!-- My Videos Section -->
@@ -128,13 +97,13 @@
                                 <div class="thumbnail-placeholder">
                                     <i class="fas fa-play-circle"></i>
                                 </div>
-                                <button class="play-btn" data-video-url="{{ url_for('download_file', filename=video.video_url) }}" data-video-title="{{ video.title or 'Untitled Video' }}" data-video-date="{{ video.created_at }}" data-video-music="{{ video.music_style }}">
+                                <button class="play-btn" data-video-url="{{ url_for('download_file', filename=video.video_url) }}" data-video-title="{{ video.title or 'Untitled Video' }}" data-video-date="{{ video.created_at.strftime('%Y-%m-%d') }}" data-video-music="{{ video.music_style }}">
                                     <i class="fas fa-play"></i>
                                 </button>
                             </div>
                             <div class="video-info">
                                 <h3 class="video-title">{{ video.title or "Untitled Video" }}</h3>
-                                <p class="video-date">Created: {{ video.created_at[:10] }}</p>
+                                <p class="video-date">Created: {{ video.created_at.strftime('%Y-%m-%d') }}</p>
                                 <p class="video-music">Music: {{ video.music_style }}</p>
                             </div>
                         </div>
@@ -185,7 +154,7 @@
                                         </div>
                                     </td>
                                     <td>{{ video.title or "Untitled Video" }}</td>
-                                    <td>{{ video.created_at }}</td>
+                                    <td>{{ video.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                                     <td>{{ video.music_style }}</td>
                                     <td>45s</td>
                                     <td>
@@ -193,7 +162,7 @@
                                         <span class="tag">generated</span>
                                     </td>
                                     <td>
-                                        <button class="btn-play" data-video-url="{{ url_for('download_file', filename=video.video_url) }}" data-video-title="{{ video.title or 'Untitled Video' }}" data-video-date="{{ video.created_at }}" data-video-music="{{ video.music_style }}">
+                                        <button class="btn-play" data-video-url="{{ url_for('download_file', filename=video.video_url) }}" data-video-title="{{ video.title or 'Untitled Video' }}" data-video-date="{{ video.created_at.strftime('%Y-%m-%d') }}" data-video-music="{{ video.music_style }}">
                                             <i class="fas fa-play"></i> Play
                                         </button>
                                     </td>
