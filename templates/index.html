@@ -3,281 +3,300 @@
 {% block title %}Create Stunning Video Reels{% endblock %}
 
 {% block content %}
-    <!-- Header & Navigation -->
-    <header>
-        <div class="container">
-            <nav>
-                <div class="logo">
-                    <i class="fas fa-film"></i>
-                    <span>SnapAI</span>
-                </div>
-                <div class="nav-links">
-                    <a href="#" data-section="home">Home</a>
-                    <a href="#" data-section="features">Features</a>
-                    <a href="#" data-section="how-it-works">How it Works</a>
-                    <a href="#" data-section="pricing">Pricing</a>
-                    {% if user %}
-                        {% if user.is_admin %}
-                            <a href="{{ url_for('admin_dashboard') }}" class="nav-link">Admin Panel</a>
-                        {% else %}
-                            <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
-                        {% endif %}
-                        <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
-                    {% endif %}
-                </div>
-                <div class="auth-buttons">
-                    {% if user %}
-                        <a href="{{ url_for('logout') }}" class="btn btn-login">Logout</a>
-                        <a href="#" class="btn btn-signup">{{ user.name }}</a>
-                    {% else %}
-                        <a href="{{ url_for('auth') }}" class="btn btn-login">Login</a>
-                        <a href="{{ url_for('signup') }}" class="btn btn-signup">Sign Up</a>
-                    {% endif %}
-                </div>
-            </nav>
-        </div>
-    </header>
-
-    <!-- Rest of your HTML content from the original index.html -->
-     <!-- Home Section -->
-    <section id="home" class="section active">
-        <div class="hero">
-            <div class="container">
-                <h1 class="animated">Transform Photos Into Captivating Video Reels</h1>
-                <p class="animated delay-1">Powered by AI - Just upload your photos, choose music, and let our AI create
-                    stunning video reels in seconds</p>
-                <div class="hero-buttons animated delay-2">
-                    <a href="{{ url_for('get_started') }}" class="btn btn-primary" style="width: 200px; height: 45px; font-size: 18px;">Get Started Free</a>
-                    
-                </div>
-            </div>
-        </div>
-
-        <!-- Features Section -->
-        <div class="features">
-            <div class="container">
-                <h2 class="section-title">Amazing Features</h2>
-                <div class="features-grid">
-                    <div class="feature-card animated">
-                        <div class="feature-icon">
-                            <i class="fas fa-robot"></i>
-                        </div>
-                        <h3>AI-Powered Editing</h3>
-                        <p>Our advanced AI analyzes your photos and creates perfectly timed video sequences</p>
-                    </div>
-                    <div class="feature-card animated delay-1">
-                        <div class="feature-icon">
-                            <i class="fas fa-music"></i>
-                        </div>
-                        <h3>Music Sync</h3>
-                        <p>Automatically sync transitions and effects to the beat of your chosen music</p>
-                    </div>
-                    <div class="feature-card animated delay-2">
-                        <div class="feature-icon">
-                            <i class="fas fa-bolt"></i>
-                        </div>
-                        <h3>Fast Processing</h3>
-                        <p>Generate high-quality video reels in under a minute with our optimized AI</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- How It Works -->
-        <div class="how-it-works">
-            <div class="container">
-                <h2 class="section-title">How It Works</h2>
-                <div class="steps">
-                    <div class="step animated">
-                        <div class="step-number">1</div>
-                        <h3>Upload Photos</h3>
-                        <p>Select your best moments from your device</p>
-                    </div>
-                    <div class="step animated delay-1">
-                        <div class="step-number">2</div>
-                        <h3>Choose Music</h3>
-                        <p>Pick from our library or upload your own track</p>
-                    </div>
-                    <div class="step animated delay-2">
-                        <div class="step-number">3</div>
-                        <h3>Generate Video</h3>
-                        <p>Our AI will create your custom video reel</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Features Section (full page) -->
-    <section id="features" class="section">
-        <div class="container" style="padding: 160px 0 100px 0;">
-            <h2 class="section-title">Advanced Features</h2>
-            <div class="features-grid">
-                <div class="feature-card animated">
-                    <div class="feature-icon">
-                        <i class="fas fa-magic"></i>
-                    </div>
-                    <h3>Smart Transitions</h3>
-                    <p>AI-powered transitions that match the mood and tempo of your content</p>
-                </div>
-                <div class="feature-card animated delay-1">
-                    <div class="feature-icon">
-                        <i class="fas fa-filter"></i>
-                    </div>
-                    <h3>Style Filters</h3>
-                    <p>Apply cinematic filters that enhance your video's visual appeal</p>
-                </div>
-                <div class="feature-card animated delay-2">
-                    <div class="feature-icon">
-                        <i class="fas fa-cloud"></i>
-                    </div>
-                    <h3>Cloud Storage</h3>
-                    <p>All your created reels are safely stored in the cloud for easy access</p>
-                </div>
-                <div class="feature-card animated">
-                    <div class="feature-icon">
-                        <i class="fas fa-history"></i>
-                    </div>
-                    <h3>History Tracking</h3>
-                    <p>Keep track of all your created videos and edit them anytime</p>
-                </div>
-                <div class="feature-card animated delay-1">
-                    <div class="feature-icon">
-                        <i class="fas fa-share-alt"></i>
-                    </div>
-                    <h3>Easy Sharing</h3>
-                    <p>Share your creations directly to social media platforms</p>
-                </div>
-                <div class="feature-card animated delay-2">
-                    <div class="feature-icon">
-                        <i class="fas fa-mobile-alt"></i>
-                    </div>
-                    <h3>Mobile Friendly</h3>
-                    <p>Create and edit videos on the go with our mobile-optimized interface</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- How It Works Section (full page) -->
-    <section id="how-it-works" class="section">
-        <div class="container" style="padding-top: 160px;" name="how-it-works">
-            <h2 class="section-title">How SnapAI Works</h2>
-
-            <div class="steps" style="margin-bottom: 80px;">
-                <div class="step animated">
-                    <div class="step-number">1</div>
-                    <h3>Upload Your Photos</h3>
-                    <p>Select between 5-20 high-quality photos from your device or cloud storage</p>
-                </div>
-                <div class="step animated delay-1">
-                    <div class="step-number">2</div>
-                    <h3>Select Music</h3>
-                    <p>Choose from our extensive music library categorized by genre and mood</p>
-                </div>
-                <div class="step animated delay-2">
-                    <div class="step-number">3</div>
-                    <h3>Customize</h3>
-                    <p>Adjust the style, transitions, and duration to match your preferences</p>
-                </div>
-            </div>
-            <div class="video-demo">
-                <div class="demo-container animated">
-                    <h3 style="margin: 0 0 15px 0;">Try It Now</h3>
-                    <div class="upload-area">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <h3>Click to Upload Photos</h3>
-                        <p>Select 5-10 photos for best results</p>
-                    </div>
-                    <h3 style="margin: 0 0 15px 0;">Select Music Style</h3>
-                    <div class="music-selection">
-                        <div class="music-option">Pop</div>
-                        <div class="music-option">Rock</div>
-                        <div class="music-option active">Electronic</div>
-                        <div class="music-option">Hip Hop</div>
-                        <div class="music-option">Chill</div>
-                    </div>
-                    <button class="generate-btn">Generate Video</button>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Pricing Section -->
-    <section id="pricing" class="section">
-        <div class="container" style="padding: 160px 0 100px 0;">
-            <h2 class="section-title">Choose Your Plan<br>Select the plan that works best for your video creation needs
-            </h2>
-            <div class="pricing-cards">
-                <div class="pricing-card animated">
-                    <h3>Normal</h3>
-                    <div class="price">₹200<span>/month</span></div>
-                    <ul class="pricing-features">
-                        <li>10 video generations per month</li>
-                        <li>720p video resolution</li>
-                        <li>Basic music library</li>
-                        <li>5GB cloud storage</li>
-                        <li>Standard support</li>
-                    </ul>
-                    <button class="pricing-btn">Get Started</button>
-                </div>
-
-                <div class="pricing-card popular animated delay-1">
-                    <div class="popular-badge">MOST POPULAR</div>
-                    <h3>Medium</h3>
-                    <div class="price">₹600<span>/month</span></div>
-                    <ul class="pricing-features">
-                        <li>50 video generations per month</li>
-                        <li>1080p video resolution</li>
-                        <li>Full music library</li>
-                        <li>20GB cloud storage</li>
-                        <li>Priority support</li>
-                        <li>No watermarks</li>
-                    </ul>
-                    <button class="pricing-btn">Get Started</button>
-                </div>
-
-                <div class="pricing-card animated delay-2">
-                    <h3>Advanced</h3>
-                    <div class="price">₹1000<span>/month</span></div>
-                    <ul class="pricing-features">
-                        <li>Unlimited video generations</li>
-                        <li>4K video resolution</li>
-                        <li>Premium music library</li>
-                        <li>100GB cloud storage</li>
-                        <li>24/7 priority support</li>
-                        <li>Advanced editing tools</li>
-                        <li>Commercial license</li>
-                    </ul>
-                    <button class="pricing-btn">Get Started</button>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer>
-        <div class="container">
+<!-- Header & Navigation -->
+<header>
+    <div class="container">
+        <nav>
             <div class="logo">
                 <i class="fas fa-film"></i>
                 <span>SnapAI</span>
             </div>
-            <div class="footer-links">
-                <a href="#">About Us</a>
-                <a href="#">Contact</a>
-                <a href="#">Privacy Policy</a>
-                <a href="#">Terms of Service</a>
-                <a href="#">Help Center</a>
+            <div class="nav-links">
+                <a href="#" data-section="home">Home</a>
+                <a href="#" data-section="features">Features</a>
+                <a href="#" data-section="how-it-works">How it Works</a>
+                <a href="#" data-section="pricing">Pricing</a>
+                {% if user %}
+                {% if user.is_admin %}
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-link">Admin Panel</a>
+                {% else %}
+                <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
+                {% endif %}
             </div>
-            <div class="social-icons">
-                <a href="https://github.com/shovongorain"><i class="fab fa-github"></i></a>
-                <a href="https://www.linkedin.com/in/shovongorain/"><i class="fab fa-linkedin"></i></a>
-                <a href="https://www.instagram.com/shovon_gorain_12?igsh=YmV4aTN5YXFrdjZ1"><i class="fab fa-instagram"></i></a>
-                <a href="https://mail.google.com/mail/u/0/#inbox?compose=GTvVlcSPFdFRSsnrdxXKGPtQLgDGPMwPrLFgtmjpHtNxjJkDZLkvsnjgJjrMpqjsmFkLSmNFtFfsz"><i class="fas fa-envelope"></i></a>
+            <div class="auth-buttons">
+                {% if user %}
+                <a href="{{ url_for('logout') }}" class="btn btn-login">Logout</a>
+                <a href="#" class="btn btn-signup">{{ user.name }}</a>
+                {% else %}
+                <a href="{{ url_for('auth') }}" class="btn btn-signup">Login | Signup</a>
+                {% endif %}
             </div>
-            <p class="copyright">© Create By Shovon Gorain</p>
+        </nav>
+    </div>
+</header>
+
+<!-- Rest of your HTML content from the original index.html -->
+<!-- Home Section -->
+<section id="home" class="section active">
+    <div class="hero">
+        <div class="container">
+            <h1 class="animated">Transform Photos Into Captivating Video Reels</h1>
+            <p class="animated delay-1">Powered by AI - Just upload your photos, choose music, and let our AI create
+                stunning video reels in seconds</p>
+            <div class="hero-buttons animated delay-2">
+                <a href="{{ url_for('get_started') }}" class="btn btn-primary"
+                    style="width: 200px; height: 45px; font-size: 18px;">Get Started Free</a>
+
+            </div>
         </div>
-    </footer>
-    <!-- ... (all the HTML content from your original file) ... -->
+    </div>
+
+    <!-- Features Section -->
+    <div class="features">
+        <div class="container">
+            <h2 class="section-title">Amazing Features</h2>
+            <div class="features-grid">
+                <div class="feature-card animated">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3>AI-Powered Editing</h3>
+                    <p>Our advanced AI analyzes your photos and creates perfectly timed video sequences</p>
+                </div>
+                <div class="feature-card animated delay-1">
+                    <div class="feature-icon">
+                        <i class="fas fa-music"></i>
+                    </div>
+                    <h3>Music Sync</h3>
+                    <p>Automatically sync transitions and effects to the beat of your chosen music</p>
+                </div>
+                <div class="feature-card animated delay-2">
+                    <div class="feature-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h3>Fast Processing</h3>
+                    <p>Generate high-quality video reels in under a minute with our optimized AI</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How It Works -->
+    <div class="how-it-works">
+        <div class="container">
+            <h2 class="section-title">How It Works</h2>
+            <div class="steps">
+                <div class="step animated">
+                    <div class="step-number">1</div>
+                    <h3>Upload Photos</h3>
+                    <p>Select your best moments from your device</p>
+                </div>
+                <div class="step animated delay-1">
+                    <div class="step-number">2</div>
+                    <h3>Choose Music</h3>
+                    <p>Pick from our library or upload your own track</p>
+                </div>
+                <div class="step animated delay-2">
+                    <div class="step-number">3</div>
+                    <h3>Generate Video</h3>
+                    <p>Our AI will create your custom video reel</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section (full page) -->
+<section id="features" class="section">
+    <div class="container" style="padding: 160px 0 100px 0;">
+        <h2 class="section-title">Advanced Features</h2>
+        <div class="features-grid">
+            <div class="feature-card animated">
+                <div class="feature-icon">
+                    <i class="fas fa-magic"></i>
+                </div>
+                <h3>Smart Transitions</h3>
+                <p>AI-powered transitions that match the mood and tempo of your content</p>
+            </div>
+            <div class="feature-card animated delay-1">
+                <div class="feature-icon">
+                    <i class="fas fa-filter"></i>
+                </div>
+                <h3>Style Filters</h3>
+                <p>Apply cinematic filters that enhance your video's visual appeal</p>
+            </div>
+            <div class="feature-card animated delay-2">
+                <div class="feature-icon">
+                    <i class="fas fa-cloud"></i>
+                </div>
+                <h3>Cloud Storage</h3>
+                <p>All your created reels are safely stored in the cloud for easy access</p>
+            </div>
+            <div class="feature-card animated">
+                <div class="feature-icon">
+                    <i class="fas fa-history"></i>
+                </div>
+                <h3>History Tracking</h3>
+                <p>Keep track of all your created videos and edit them anytime</p>
+            </div>
+            <div class="feature-card animated delay-1">
+                <div class="feature-icon">
+                    <i class="fas fa-share-alt"></i>
+                </div>
+                <h3>Easy Sharing</h3>
+                <p>Share your creations directly to social media platforms</p>
+            </div>
+            <div class="feature-card animated delay-2">
+                <div class="feature-icon">
+                    <i class="fas fa-mobile-alt"></i>
+                </div>
+                <h3>Mobile Friendly</h3>
+                <p>Create and edit videos on the go with our mobile-optimized interface</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works Section (full page) -->
+<section id="how-it-works" class="section">
+    <div class="container" style="padding-top: 160px;" name="how-it-works">
+        <h2 class="section-title">How SnapAI Works</h2>
+
+        <div class="steps" style="margin-bottom: 80px;">
+            <div class="step animated">
+                <div class="step-number">1</div>
+                <h3>Upload Your Photos</h3>
+                <p>Select between 5-20 high-quality photos from your device or cloud storage</p>
+            </div>
+            <div class="step animated delay-1">
+                <div class="step-number">2</div>
+                <h3>Select Music</h3>
+                <p>Choose from our extensive music library categorized by genre and mood</p>
+            </div>
+            <div class="step animated delay-2">
+                <div class="step-number">3</div>
+                <h3>Customize</h3>
+                <p>Adjust the style, transitions, and duration to match your preferences</p>
+            </div>
+        </div>
+        <div class="video-demo">
+            <div class="demo-container animated">
+                <h3 style="margin: 0 0 15px 0;">Try It Now</h3>
+                <div class="upload-area">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Click to Upload Photos</h3>
+                    <p>Select 5-10 photos for best results</p>
+                </div>
+                <h3 style="margin: 0 0 15px 0;">Select Music Style</h3>
+                <div class="music-selection">
+                    <div class="music-option">Pop</div>
+                    <div class="music-option">Rock</div>
+                    <div class="music-option active">Electronic</div>
+                    <div class="music-option">Hip Hop</div>
+                    <div class="music-option">Chill</div>
+                </div>
+                <button class="generate-btn">
+                    Generate Video
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Pricing Section -->
+<section id="pricing" class="section">
+    <div class="container" style="padding: 160px 0 100px 0;">
+        <h2 class="section-title">Choose Your Plan<br>Select the plan that works best for your video creation needs
+        </h2>
+        <div class="pricing-cards">
+            <div class="pricing-card animated">
+                <h3>Normal</h3>
+                <div class="price">₹200<span>/month</span></div>
+                <ul class="pricing-features">
+                    <li>10 video generations per month</li>
+                    <li>720p video resolution</li>
+                    <li>Basic music library</li>
+                    <li>5GB cloud storage</li>
+                    <li>Standard support</li>
+                </ul>
+                <button class="pricing-btn">Get Started</button>
+            </div>
+
+            <div class="pricing-card popular animated delay-1">
+                <div class="popular-badge">MOST POPULAR</div>
+                <h3>Medium</h3>
+                <div class="price">₹600<span>/month</span></div>
+                <ul class="pricing-features">
+                    <li>50 video generations per month</li>
+                    <li>1080p video resolution</li>
+                    <li>Full music library</li>
+                    <li>20GB cloud storage</li>
+                    <li>Priority support</li>
+                    <li>No watermarks</li>
+                </ul>
+                <button class="pricing-btn">Get Started</button>
+            </div>
+
+            <div class="pricing-card animated delay-2">
+                <h3>Advanced</h3>
+                <div class="price">₹1000<span>/month</span></div>
+                <ul class="pricing-features">
+                    <li>Unlimited video generations</li>
+                    <li>4K video resolution</li>
+                    <li>Premium music library</li>
+                    <li>100GB cloud storage</li>
+                    <li>24/7 priority support</li>
+                    <li>Advanced editing tools</li>
+                    <li>Commercial license</li>
+                </ul>
+                <button class="pricing-btn">Get Started</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="logo">
+            <i class="fas fa-film"></i>
+            <span>SnapAI</span>
+        </div>
+        <div class="footer-links">
+            <a href="#">About Us</a>
+            <a href="#">Contact</a>
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Service</a>
+            <a href="#">Help Center</a>
+        </div>
+        <div class="social-icons">
+            <a href="https://github.com/shovongorain"><i class="fab fa-github"></i></a>
+            <a href="https://www.linkedin.com/in/shovongorain/"><i class="fab fa-linkedin"></i></a>
+            <a href="https://www.instagram.com/shovon_gorain_12?igsh=YmV4aTN5YXFrdjZ1"><i
+                    class="fab fa-instagram"></i></a>
+            <a
+                href="https://mail.google.com/mail/u/0/#inbox?compose=GTvVlcSPFdFRSsnrdxXKGPtQLgDGPMwPrLFgtmjpHtNxjJkDZLkvsnjgJjrMpqjsmFkLSmNFtFfsz"><i
+                    class="fas fa-envelope"></i></a>
+        </div>
+        <p class="copyright">© Create By Shovon Gorain</p>
+    </div>
+</footer>
+<!-- ... (all the HTML content from your original file) ... -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get all Generate Video buttons
+    const generateButtons = document.querySelectorAll('.generate-btn');
+    
+    // Add click event listeners to all Generate Video buttons
+    generateButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Redirect to payment page
+            window.location.href = "{{ url_for('payment') }}";
+        });
+    });
+});
+</script>
 
 {% endblock %}

@@ -49,7 +49,7 @@
                     </div>
 
                     <div class="music-upload-section">
-                        <h3>Upload Your Own Music (Optional)</h3>
+                        <h3>Upload Your Own Music (Optional)</h3><br>
                         <div class="music-upload-area" id="music-upload-area">
                             <i class="fas fa-music"></i>
                             <h3>Click to Upload Music</h3>
@@ -95,7 +95,7 @@
                         <div class="video-card">
                             <div class="video-thumbnail">
                                 <div class="thumbnail-placeholder">
-                                    <i class="fas fa-play-circle"></i>
+                                    <!-- <i class="fas fa-play-circle"></i> -->
                                 </div>
                                 <button class="play-btn" data-video-url="{{ url_for('download_file', filename=video.video_url) }}" data-video-title="{{ video.title or 'Untitled Video' }}" data-video-date="{{ video.created_at.strftime('%Y-%m-%d') }}" data-video-music="{{ video.music_style }}">
                                     <i class="fas fa-play"></i>
@@ -747,7 +747,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 /* Video card styles */
 .video-card {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(0, 0, 0, 0.274);
     border-radius: 10px;
     overflow: hidden;
     transition: transform 0.3s ease;

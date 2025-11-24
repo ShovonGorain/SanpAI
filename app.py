@@ -569,10 +569,6 @@ def download_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 # Additional routes
-@app.route('/signup')
-def signup():
-    return redirect(url_for('auth'))
-
 @app.route('/get-started')
 def get_started():
     if 'user_id' in session:
