@@ -1,72 +1,40 @@
-import mysql.connector
-from mysql.connector import Error
+import sqlite3
 import os
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
 class Database:
     def __init__(self):
-        self.host = 'localhost'
-        self.user = 'root'
-        self.password = ''
-        self.database = 'sanpai_db'
-        self.connection = None
-        self.connect()
+        self.db_name = 'sanpai.db'
         self.init_db()
 
-    def connect(self):
+    def get_connection(self):
         """Establish database connection"""
         try:
-            self.connection = mysql.connector.connect(
-                host=self.host,
-                user=self.user,
-                password=self.password,
-                database=self.database
-            )
-            if self.connection.is_connected():
-                print("✅ Connected to MySQL database")
-        except Error as e:
-            print(f"❌ Error connecting to MySQL: {e}")
-            self.create_database()
-
-    def create_database(self):
-        """Create database and tables if they don't exist"""
-        try:
-            conn = mysql.connector.connect(
-                host=self.host,
-                user=self.user,
-                password=self.password
-            )
-            cursor = conn.cursor()
-            cursor.execute(f"CREATE DATABASE IF NOT EXISTS {self.database}")
-            cursor.close()
-            conn.close()
-            
-            self.connection = mysql.connector.connect(
-                host=self.host,
-                user=self.user,
-                password=self.password,
-                database=self.database
-            )
-            self.init_db()
-        except Error as e:
-            print(f"❌ Error creating database: {e}")
+            conn = sqlite3.connect(self.db_name, check_same_thread=False)
+            # Enable dictionary access for rows
+            conn.row_factory = sqlite3.Row
+            return conn
+        except Exception as e:
+            print(f"❌ Error connecting to SQLite: {e}")
+            return None
 
     def init_db(self):
         """Initialize database tables"""
         try:
-            cursor = self.connection.cursor()
+            conn = self.get_connection()
+            cursor = conn.cursor()
             
             # Users table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS users (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    name VARCHAR(255) NOT NULL,
-                    email VARCHAR(255) UNIQUE NOT NULL,
-                    password_hash VARCHAR(255) NOT NULL,
-                    is_admin BOOLEAN DEFAULT FALSE,
-                    is_paid BOOLEAN DEFAULT FALSE,
-                    login_attempts INT DEFAULT 0,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    is_admin BOOLEAN DEFAULT 0,
+                    is_paid BOOLEAN DEFAULT 0,
+                    login_attempts INTEGER DEFAULT 0,
                     last_attempt TIMESTAMP NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -75,38 +43,48 @@ class Database:
             # Videos table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS videos (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    user_id INT NOT NULL,
-                    title VARCHAR(255) NOT NULL,
-                    video_url VARCHAR(500) NOT NULL,
-                    music_style VARCHAR(100),
-                    music_file VARCHAR(255),
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    video_url TEXT NOT NULL,
+                    music_style TEXT,
+                    music_file TEXT,
+                    thumbnail_url TEXT,
+                    duration TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
             ''')
             
+            # Add columns if they don't exist (migration for SQLite)
+            # SQLite doesn't have "DESCRIBE", so we check PRAGMA table_info
+            cursor.execute("PRAGMA table_info(videos)")
+            columns = [column[1] for column in cursor.fetchall()]
+            
+            if 'thumbnail_url' not in columns:
+                print("Updating videos table: adding thumbnail_url")
+                cursor.execute("ALTER TABLE videos ADD COLUMN thumbnail_url TEXT")
+
+            if 'duration' not in columns:
+                print("Updating videos table: adding duration")
+                cursor.execute("ALTER TABLE videos ADD COLUMN duration TEXT")
+
             # Create default admin user if not exists
-            admin_password_hash = generate_password_hash('admin123')
-            print(f"🔑 Creating admin user with hash: {admin_password_hash[:50]}...")
+            cursor.execute("SELECT * FROM users WHERE email = ?", ('admin@sanpai.com',))
+            if not cursor.fetchone():
+                admin_password_hash = generate_password_hash('admin123')
+                print(f"🔑 Creating admin user with hash: {admin_password_hash[:50]}...")
+                cursor.execute('''
+                    INSERT INTO users (name, email, password_hash, is_admin, is_paid)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', ('Admin', 'admin@sanpai.com', admin_password_hash, True, True))
             
-            cursor.execute('''
-                INSERT IGNORE INTO users (name, email, password_hash, is_admin, is_paid) 
-                VALUES (%s, %s, %s, %s, %s)
-            ''', ('Admin', 'admin@sanpai.com', admin_password_hash, True, True))
-            
-            self.connection.commit()
-            cursor.close()
+            conn.commit()
+            conn.close()
             print("✅ Database initialized successfully")
             
-        except Error as e:
+        except Exception as e:
             print(f"❌ Error initializing database: {e}")
-
-    def get_connection(self):
-        """Get database connection"""
-        if not self.connection or not self.connection.is_connected():
-            self.connect()
-        return self.connection
 
 # Create global database instance
 db = Database()
@@ -118,13 +96,13 @@ def add_user(name, email, password_hash, is_admin=False, is_paid=False):
         conn = db.get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO users (name, email, password_hash, is_admin, is_paid) VALUES (%s, %s, %s, %s, %s)",
+            "INSERT INTO users (name, email, password_hash, is_admin, is_paid) VALUES (?, ?, ?, ?, ?)",
             (name, email, password_hash, is_admin, is_paid)
         )
         conn.commit()
-        cursor.close()
+        conn.close()
         return True
-    except Error as e:
+    except Exception as e:
         print(f"❌ Error adding user: {e}")
         return False
 
@@ -132,12 +110,16 @@ def get_user_by_email(email):
     """Get user by email"""
     try:
         conn = db.get_connection()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-        user = cursor.fetchone()
-        cursor.close()
-        return user
-    except Error as e:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+        row = cursor.fetchone()
+        conn.close()
+
+        if row:
+            # Convert Row object to dict
+            return dict(row)
+        return None
+    except Exception as e:
         print(f"❌ Error getting user: {e}")
         return None
 
@@ -145,12 +127,12 @@ def get_all_users():
     """Get all users"""
     try:
         conn = db.get_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         cursor.execute("SELECT id, name, email, is_admin, is_paid, created_at FROM users ORDER BY created_at DESC")
-        users = cursor.fetchall()
-        cursor.close()
-        return users
-    except Error as e:
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+    except Exception as e:
         print(f"❌ Error getting users: {e}")
         return []
 
@@ -160,13 +142,13 @@ def increment_login_attempts(email):
         conn = db.get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE users SET login_attempts = login_attempts + 1, last_attempt = %s WHERE email = %s",
+            "UPDATE users SET login_attempts = login_attempts + 1, last_attempt = ? WHERE email = ?",
             (datetime.now(), email)
         )
         conn.commit()
-        cursor.close()
+        conn.close()
         return True
-    except Error as e:
+    except Exception as e:
         print(f"❌ Error incrementing login attempts: {e}")
         return False
 
@@ -176,13 +158,13 @@ def reset_login_attempts(email):
         conn = db.get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE users SET login_attempts = 0, last_attempt = NULL WHERE email = %s",
+            "UPDATE users SET login_attempts = 0, last_attempt = NULL WHERE email = ?",
             (email,)
         )
         conn.commit()
-        cursor.close()
+        conn.close()
         return True
-    except Error as e:
+    except Exception as e:
         print(f"❌ Error resetting login attempts: {e}")
         return False
 
@@ -191,11 +173,11 @@ def get_login_attempts(email):
     try:
         conn = db.get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT login_attempts FROM users WHERE email = %s", (email,))
+        cursor.execute("SELECT login_attempts FROM users WHERE email = ?", (email,))
         result = cursor.fetchone()
-        cursor.close()
-        return result[0] if result else 0
-    except Error as e:
+        conn.close()
+        return result['login_attempts'] if result else 0
+    except Exception as e:
         print(f"❌ Error getting login attempts: {e}")
         return 0
 
@@ -205,30 +187,30 @@ def update_payment_status(user_id, is_paid):
         conn = db.get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE users SET is_paid = %s WHERE id = %s",
+            "UPDATE users SET is_paid = ? WHERE id = ?",
             (bool(is_paid), user_id)
         )
         conn.commit()
-        cursor.close()
+        conn.close()
         return True
-    except Error as e:
+    except Exception as e:
         print(f"❌ Error updating payment status: {e}")
         return False
 
 # Video functions
-def add_video(user_id, video_url, music_style, title, music_file=None):
+def add_video(user_id, video_url, music_style, title, music_file=None, thumbnail_url=None, duration=None):
     """Add a new video to the database"""
     try:
         conn = db.get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO videos (user_id, video_url, music_style, title, music_file) VALUES (%s, %s, %s, %s, %s)",
-            (user_id, video_url, music_style, title, music_file)
+            "INSERT INTO videos (user_id, video_url, music_style, title, music_file, thumbnail_url, duration) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (user_id, video_url, music_style, title, music_file, thumbnail_url, duration)
         )
         conn.commit()
-        cursor.close()
+        conn.close()
         return True
-    except Error as e:
+    except Exception as e:
         print(f"❌ Error adding video: {e}")
         return False
 
@@ -236,15 +218,30 @@ def get_videos_by_user(user_id):
     """Get all videos for a user"""
     try:
         conn = db.get_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         cursor.execute(
-            "SELECT * FROM videos WHERE user_id = %s ORDER BY created_at DESC",
+            "SELECT * FROM videos WHERE user_id = ? ORDER BY created_at DESC",
             (user_id,)
         )
-        videos = cursor.fetchall()
-        cursor.close()
+        rows = cursor.fetchall()
+        conn.close()
+
+        # Convert created_at string to datetime object if needed, usually SQLite returns string
+        videos = []
+        for row in rows:
+            video = dict(row)
+            if isinstance(video['created_at'], str):
+                try:
+                    video['created_at'] = datetime.strptime(video['created_at'], '%Y-%m-%d %H:%M:%S')
+                except:
+                    # If parsing fails or format differs, keep as is or try another format
+                    try:
+                         video['created_at'] = datetime.strptime(video['created_at'].split('.')[0], '%Y-%m-%d %H:%M:%S')
+                    except:
+                        pass
+            videos.append(video)
         return videos
-    except Error as e:
+    except Exception as e:
         print(f"❌ Error getting user videos: {e}")
         return []
 
@@ -252,17 +249,30 @@ def get_all_videos():
     """Get all videos from all users"""
     try:
         conn = db.get_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         cursor.execute('''
             SELECT v.*, u.name as user_name, u.email as user_email 
             FROM videos v 
             JOIN users u ON v.user_id = u.id 
             ORDER BY v.created_at DESC
         ''')
-        videos = cursor.fetchall()
-        cursor.close()
+        rows = cursor.fetchall()
+        conn.close()
+
+        videos = []
+        for row in rows:
+            video = dict(row)
+            if isinstance(video['created_at'], str):
+                try:
+                    video['created_at'] = datetime.strptime(video['created_at'], '%Y-%m-%d %H:%M:%S')
+                except:
+                    try:
+                         video['created_at'] = datetime.strptime(video['created_at'].split('.')[0], '%Y-%m-%d %H:%M:%S')
+                    except:
+                        pass
+            videos.append(video)
         return videos
-    except Error as e:
+    except Exception as e:
         print(f"❌ Error getting all videos: {e}")
         return []
 
