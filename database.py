@@ -79,17 +79,28 @@ class Database:
                     user_id INT NOT NULL,
                     title VARCHAR(255) NOT NULL,
                     video_url VARCHAR(500) NOT NULL,
-                    thumbnail_url VARCHAR(500),
                     music_style VARCHAR(100),
                     music_file VARCHAR(255),
-                    duration FLOAT,
-                    resolution VARCHAR(50),
-                    size FLOAT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
             ''')
             
+            # Add new columns to videos table if they don't exist
+            video_columns = {
+                'thumbnail_url': 'VARCHAR(500)',
+                'duration': 'FLOAT',
+                'resolution': 'VARCHAR(50)',
+                'size': 'FLOAT'
+            }
+
+            cursor.execute("SHOW COLUMNS FROM videos")
+            existing_columns = [col[0] for col in cursor.fetchall()]
+
+            for col_name, col_type in video_columns.items():
+                if col_name not in existing_columns:
+                    cursor.execute(f"ALTER TABLE videos ADD COLUMN {col_name} {col_type}")
+
             # Create default admin user if not exists
             admin_password_hash = generate_password_hash('admin123')
             print(f"🔑 Creating admin user with hash: {admin_password_hash[:50]}...")

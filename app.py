@@ -36,18 +36,34 @@ init_db()
 
 # Configure upload folder
 app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max file size
+# Set a generous but sane file size limit (e.g., 512MB) to prevent server overload.
+app.config['MAX_CONTENT_LENGTH'] = 512 * 1024 * 1024
 
 # Ensure upload folder exists
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
+
+from moviepy.video.fx.all import fadein, fadeout
+from moviepy.video.compositing.transitions import (
+    crossfadein,
+    slide_in,
+    slide_out,
+    fadein as comp_fadein,
+    fadeout as comp_fadeout
+)
+from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
 
 # Video Processor Class
 class VideoProcessor:
     def __init__(self, upload_folder):
         self.upload_folder = upload_folder
         self.effects = ['blur', 'contrast', 'black_white', 'sepia', 'vignette']
-        self.transitions = ['fade', 'slide_in', 'slide_out', 'crossfade']
+        self.transitions = [
+            'slide_in',
+            'slide_out',
+            'fade',
+            'crossfade'
+        ]
         
     def organize_images(self, image_paths):
         """Organize images by filename"""
@@ -120,6 +136,22 @@ class VideoProcessor:
             print(f"Error applying effect {effect_name}: {e}")
             return image
     
+    def process_music(self, music_path, style):
+        """Process music according to selected style"""
+        if not os.path.exists(music_path):
+            return None
+
+        try:
+            # Load audio file
+            y, sr = librosa.load(music_path, sr=22050)
+
+            # Return the original audio to ensure the tune and tempo are not changed.
+            return y, sr
+
+        except Exception as e:
+            print(f"Music processing error: {e}")
+            return None
+
     def create_video(self, image_paths, music_path, music_style, output_path):
         """Create video from images and music"""
         try:
@@ -135,9 +167,10 @@ class VideoProcessor:
             audio_clip = None
             if music_path and os.path.exists(music_path):
                 try:
+                    # Simplify to always use the original audio without special processing
                     audio_clip = mp.AudioFileClip(music_path)
                 except Exception as e:
-                    print(f"Error processing music: {e}")
+                    print(f"Error loading music: {e}")
                     audio_clip = None
             
             # Create video clips from images
@@ -158,6 +191,10 @@ class VideoProcessor:
                     effect = random.choice(self.effects)
                     processed_img = self.apply_effect(img, effect)
                     
+                    # Convert to RGB if necessary before saving as JPG
+                    if processed_img.mode == 'RGBA':
+                        processed_img = processed_img.convert('RGB')
+
                     # Save processed image temporarily
                     temp_img_path = os.path.join(self.upload_folder, f"temp_{uuid.uuid4().hex}.jpg")
                     processed_img.save(temp_img_path, quality=85)
@@ -181,42 +218,34 @@ class VideoProcessor:
             
             print(f"Created {len(clips)} clips, applying transitions...")
 
-            # Create a list of clips with transitions
-            final_clips = []
-            transition_duration = 1.0 # seconds
-
-            # Start with the first clip
-            final_clips.append(clips[0])
+            # Create transitions between clips
+            transition_duration = 0.5  # half a second
+            final_clips = [clips[0]]  # Start with the first clip
             
-            for i in range(1, len(clips)):
-                # Get the previous clip from our final list
-                prev_clip = final_clips[-1]
+            for i in range(len(clips) - 1):
+                clip1 = final_clips[-1]
+                clip2 = clips[i+1]
 
-                # Get the current clip
-                curr_clip = clips[i]
-
-                # Choose a random transition
                 transition_name = random.choice(self.transitions)
 
-                # Apply the transition
                 if transition_name == 'fade':
-                    curr_clip = curr_clip.set_start(prev_clip.end - transition_duration).crossfadein(transition_duration)
+                    final_clips[-1] = clip1.fx(comp_fadeout, transition_duration)
+                    clip2 = clip2.fx(comp_fadein, transition_duration)
+
+                elif transition_name == 'crossfade':
+                    clip2 = clip2.fx(crossfadein, transition_duration)
+
                 elif transition_name == 'slide_in':
-                    curr_clip = curr_clip.set_start(prev_clip.end - transition_duration).set_position(lambda t: (prev_clip.w * (1 - min(t/transition_duration, 1)), 'center'))
+                    clip2 = clip2.fx(slide_in, transition_duration, side=random.choice(['left', 'right', 'top', 'bottom']))
+
                 elif transition_name == 'slide_out':
-                    prev_clip = prev_clip.set_position(lambda t: (-prev_clip.w * min(t/transition_duration, 1), 'center'))
-                    curr_clip = curr_clip.set_start(prev_clip.end - transition_duration)
-                else:
-                    curr_clip = curr_clip.set_start(prev_clip.end - transition_duration).crossfadein(transition_duration)
+                    final_clips[-1] = clip1.fx(slide_out, transition_duration, side=random.choice(['left', 'right', 'top', 'bottom']))
 
-                # Update the previous clip in the list if it was modified
-                final_clips[-1] = prev_clip
+                final_clips.append(clip2)
 
-                # Add the new clip
-                final_clips.append(curr_clip)
+            # Compose the final video using transitions
+            video = mp.concatenate_videoclips(final_clips, padding=-transition_duration, method="compose")
 
-            video = mp.CompositeVideoClip(final_clips)
-            
             # Add audio if available
             if audio_clip:
                 try:
@@ -248,16 +277,23 @@ class VideoProcessor:
             if audio_clip:
                 audio_clip.close()
             
-            # Generate thumbnail
-            thumbnail_path = os.path.splitext(output_path)[0] + '.jpg'
-            video.save_frame(thumbnail_path, t=1.00) # Save frame at 1 second
-
             print("Video created successfully!")
-            return True, "Video created successfully"
+
+            # Return video object along with metadata
+            duration = video.duration
+            resolution = f"{video.size[0]}x{video.size[1]}"
+            size = os.path.getsize(output_path) / (1024 * 1024)  # in MB
+
+            return True, "Video created successfully", {
+                'duration': duration,
+                'resolution': resolution,
+                'size': size,
+                'video_obj': video  # Pass the video object for thumbnail generation
+            }
             
         except Exception as e:
             print(f"Error in create_video: {e}")
-            return False, f"Video creation failed: {str(e)}"
+            return False, f"Video creation failed: {str(e)}", None
 
 # Initialize video processor
 video_processor = VideoProcessor(app.config['UPLOAD_FOLDER'])
@@ -346,8 +382,7 @@ def auth():
                 }
                 session['is_admin'] = user['is_admin']
                 session['is_paid'] = user['is_paid']
-
-                session.permanent = False
+                session.permanent = True
 
                 reset_login_attempts(email)
                 flash('Login successful!')
@@ -507,7 +542,7 @@ def generate_video():
         print(f"Starting video creation with {len(saved_files)} images...")
         
         # Create video using our processor
-        success, message = video_processor.create_video(
+        success, message, video_data = video_processor.create_video(
             saved_files,
             os.path.join(upload_dir, music_filename) if music_filename else None,
             music_style,
@@ -531,24 +566,26 @@ def generate_video():
                 'message': message
             })
         
-        # Get video details
-        video = mp.VideoFileClip(video_path)
-        duration = video.duration
-        resolution = f"{video.size[0]}x{video.size[1]}"
-        size = os.path.getsize(video_path) / (1024 * 1024) # in MB
-        video.close()
+        # Generate thumbnail
+        thumbnail_filename = f"{uuid.uuid4().hex}.jpg"
+        thumbnail_path = os.path.join(upload_dir, thumbnail_filename)
+        try:
+            video_data['video_obj'].save_frame(thumbnail_path, t=1.00) # Save frame at 1 second
+        except Exception as e:
+            print(f"Error generating thumbnail: {e}")
+            thumbnail_filename = None # Set to None if thumbnail fails
 
-        # Add video to database
+        # Add video to database with all metadata
         add_video(
             user_id=session['user_id'],
             video_url=video_filename,
-            thumbnail_url=os.path.splitext(video_filename)[0] + '.jpg',
+            thumbnail_url=thumbnail_filename,
             music_style=music_style,
             title=f"Video_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}",
             music_file=music_filename,
-            duration=duration,
-            resolution=resolution,
-            size=size
+            duration=video_data.get('duration'),
+            resolution=video_data.get('resolution'),
+            size=video_data.get('size')
         )
 
         # Clean up uploaded photos
