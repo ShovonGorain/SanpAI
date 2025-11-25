@@ -86,6 +86,21 @@ class Database:
                 )
             ''')
             
+            # Add new columns to videos table if they don't exist
+            video_columns = {
+                'thumbnail_url': 'VARCHAR(500)',
+                'duration': 'FLOAT',
+                'resolution': 'VARCHAR(50)',
+                'size': 'FLOAT'
+            }
+            
+            cursor.execute("SHOW COLUMNS FROM videos")
+            existing_columns = [col[0] for col in cursor.fetchall()]
+            
+            for col_name, col_type in video_columns.items():
+                if col_name not in existing_columns:
+                    cursor.execute(f"ALTER TABLE videos ADD COLUMN {col_name} {col_type}")
+            
             # Create default admin user if not exists
             admin_password_hash = generate_password_hash('admin123')
             print(f"🔑 Creating admin user with hash: {admin_password_hash[:50]}...")
@@ -216,14 +231,14 @@ def update_payment_status(user_id, is_paid):
         return False
 
 # Video functions
-def add_video(user_id, video_url, music_style, title, music_file=None):
+def add_video(user_id, video_url, thumbnail_url, title, music_file=None, duration=None, resolution=None, size=None):
     """Add a new video to the database"""
     try:
         conn = db.get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO videos (user_id, video_url, music_style, title, music_file) VALUES (%s, %s, %s, %s, %s)",
-            (user_id, video_url, music_style, title, music_file)
+            "INSERT INTO videos (user_id, video_url, thumbnail_url, title, music_file, duration, resolution, size) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (user_id, video_url, thumbnail_url, title, music_file, duration, resolution, size)
         )
         conn.commit()
         cursor.close()
