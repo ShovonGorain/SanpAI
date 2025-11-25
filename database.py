@@ -100,6 +100,14 @@ class Database:
             for col_name, col_type in video_columns.items():
                 if col_name not in existing_columns:
                     cursor.execute(f"ALTER TABLE videos ADD COLUMN {col_name} {col_type}")
+
+            # Settings table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS settings (
+                    key_name VARCHAR(255) PRIMARY KEY,
+                    key_value VARCHAR(255) NOT NULL
+                )
+            ''')
             
             # Create default admin user if not exists
             admin_password_hash = generate_password_hash('admin123')
@@ -168,6 +176,19 @@ def get_all_users():
     except Error as e:
         print(f"❌ Error getting users: {e}")
         return []
+
+def delete_user(user_id):
+    """Delete a user from the database"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        conn.commit()
+        cursor.close()
+        return True
+    except Error as e:
+        print(f"❌ Error deleting user: {e}")
+        return False
 
 def increment_login_attempts(email):
     """Increment login attempts for a user"""
@@ -281,6 +302,94 @@ def get_all_videos():
         print(f"❌ Error getting all videos: {e}")
         return []
 
+def delete_video(video_id):
+    """Delete a video from the database"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM videos WHERE id = %s", (video_id,))
+        conn.commit()
+        cursor.close()
+        return True
+    except Error as e:
+        print(f"❌ Error deleting video: {e}")
+        return False
+
 def init_db():
     """Initialize database (for backward compatibility)"""
     return db.init_db()
+
+# Settings functions
+def get_setting(key_name):
+    """Get a setting value from the database"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT key_value FROM settings WHERE key_name = %s", (key_name,))
+        result = cursor.fetchone()
+        cursor.close()
+        return result['key_value'] if result else None
+    except Error as e:
+        print(f"❌ Error getting setting: {e}")
+        return None
+
+def update_setting(key_name, key_value):
+    """Update a setting value in the database"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO settings (key_name, key_value) VALUES (%s, %s) ON DUPLICATE KEY UPDATE key_value = %s",
+            (key_name, key_value, key_value)
+        )
+        conn.commit()
+        cursor.close()
+        return True
+    except Error as e:
+        print(f"❌ Error updating setting: {e}")
+        return False
+
+import subprocess
+def backup_database():
+    """Create a backup of the database"""
+    try:
+        backup_path = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.sql"
+        with open(backup_path, 'w') as f:
+            subprocess.run(
+                ['mysqldump', '-u', db.user, f'-p{db.password}', db.database],
+                stdout=f,
+                check=True
+            )
+        return backup_path
+    except Exception as e:
+        print(f"❌ Error backing up database: {e}")
+        return None
+
+def optimize_database():
+    """Optimize all tables in the database"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SHOW TABLES")
+        tables = [table[0] for table in cursor.fetchall()]
+        for table in tables:
+            cursor.execute(f"OPTIMIZE TABLE {table}")
+        cursor.close()
+        return True
+    except Error as e:
+        print(f"❌ Error optimizing database: {e}")
+        return False
+
+def clear_all_data():
+    """Clear all data from the database"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM videos")
+        cursor.execute("DELETE FROM users WHERE is_admin = FALSE")
+        conn.commit()
+        cursor.close()
+        return True
+    except Error as e:
+        print(f"❌ Error clearing data: {e}")
+        return False
