@@ -94,9 +94,7 @@
                         {% for video in videos %}
                         <div class="video-card">
                             <div class="video-thumbnail">
-                                <div class="thumbnail-placeholder">
-                                    <!-- <i class="fas fa-play-circle"></i> -->
-                                </div>
+                                <img src="{{ url_for('download_file', filename=video.thumbnail_url) }}" alt="Video thumbnail" style="width: 100%; height: 100%; object-fit: cover;">
                                 <button class="play-btn" data-video-url="{{ url_for('download_file', filename=video.video_url) }}" data-video-title="{{ video.title or 'Untitled Video' }}" data-video-date="{{ video.created_at.strftime('%Y-%m-%d') }}" data-video-music="{{ video.music_style }}">
                                     <i class="fas fa-play"></i>
                                 </button>
@@ -105,6 +103,9 @@
                                 <h3 class="video-title">{{ video.title or "Untitled Video" }}</h3>
                                 <p class="video-date">Created: {{ video.created_at.strftime('%Y-%m-%d') }}</p>
                                 <p class="video-music">Music: {{ video.music_style }}</p>
+                                <p class="video-details">
+                                    {{ video.duration|round(1) }}s | {{ video.resolution }} | {{ video.size|round(2) }}MB
+                                </p>
                             </div>
                         </div>
                         {% endfor %}
@@ -140,7 +141,8 @@
                                 <th>Created</th>
                                 <th>Music</th>
                                 <th>Duration</th>
-                                <th>Tags</th>
+                                <th>Resolution</th>
+                                <th>Size</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -150,17 +152,15 @@
                                 <tr>
                                     <td>
                                         <div class="history-thumbnail">
-                                            <i class="fas fa-film"></i>
+                                            <img src="{{ url_for('download_file', filename=video.thumbnail_url) }}" alt="Video thumbnail" style="width: 100%; height: 100%; object-fit: cover;">
                                         </div>
                                     </td>
                                     <td>{{ video.title or "Untitled Video" }}</td>
                                     <td>{{ video.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                                     <td>{{ video.music_style }}</td>
-                                    <td>45s</td>
-                                    <td>
-                                        <span class="tag">user</span>
-                                        <span class="tag">generated</span>
-                                    </td>
+                                    <td>{{ video.duration|round(1) }}s</td>
+                                    <td>{{ video.resolution }}</td>
+                                    <td>{{ video.size|round(2) }}MB</td>
                                     <td>
                                         <button class="btn-play" data-video-url="{{ url_for('download_file', filename=video.video_url) }}" data-video-title="{{ video.title or 'Untitled Video' }}" data-video-date="{{ video.created_at.strftime('%Y-%m-%d') }}" data-video-music="{{ video.music_style }}">
                                             <i class="fas fa-play"></i> Play

@@ -79,8 +79,12 @@ class Database:
                     user_id INT NOT NULL,
                     title VARCHAR(255) NOT NULL,
                     video_url VARCHAR(500) NOT NULL,
+                    thumbnail_url VARCHAR(500),
                     music_style VARCHAR(100),
                     music_file VARCHAR(255),
+                    duration FLOAT,
+                    resolution VARCHAR(50),
+                    size FLOAT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
@@ -216,14 +220,14 @@ def update_payment_status(user_id, is_paid):
         return False
 
 # Video functions
-def add_video(user_id, video_url, music_style, title, music_file=None):
+def add_video(user_id, video_url, thumbnail_url, music_style, title, music_file=None, duration=None, resolution=None, size=None):
     """Add a new video to the database"""
     try:
         conn = db.get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO videos (user_id, video_url, music_style, title, music_file) VALUES (%s, %s, %s, %s, %s)",
-            (user_id, video_url, music_style, title, music_file)
+            "INSERT INTO videos (user_id, video_url, thumbnail_url, music_style, title, music_file, duration, resolution, size) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (user_id, video_url, thumbnail_url, music_style, title, music_file, duration, resolution, size)
         )
         conn.commit()
         cursor.close()
