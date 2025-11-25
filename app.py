@@ -5,6 +5,13 @@ from database import (
     get_user_by_email,
     get_all_users,
     get_all_videos,
+    delete_user,
+    delete_video,
+    get_setting,
+    update_setting,
+    backup_database,
+    optimize_database,
+    clear_all_data,
     increment_login_attempts,
     reset_login_attempts,
     get_login_attempts,
@@ -615,6 +622,155 @@ def admin_dashboard():
     except Exception as e:
         flash('Error accessing admin panel: ' + str(e))
         return redirect(url_for('index'))
+
+@app.route('/admin/dashboard_data')
+@login_required
+@admin_required
+def admin_dashboard_data():
+    """Fetch real-time dashboard data."""
+    try:
+        # Get data from database
+        total_users = len(get_all_users())
+        total_videos = len(get_all_videos())
+
+        # Get recent activity (you'd have a proper table for this in a real app)
+        recent_activity = [
+            {'type': 'user', 'message': 'New user registered: Jane Doe', 'time': '5 minutes ago'},
+            {'type': 'video', 'message': 'Video generated: Mountain Adventures', 'time': '20 minutes ago'},
+            {'type': 'payment', 'message': 'New subscription: Pro Plan', 'time': '1 hour ago'},
+        ]
+
+        # System metrics
+        system_metrics = {
+            'cpu_usage': psutil.cpu_percent(),
+            'memory_usage': psutil.virtual_memory().percent,
+            'disk_usage': psutil.disk_usage('/').percent
+        }
+
+        return jsonify({
+            'total_users': total_users,
+            'total_videos': total_videos,
+            'recent_activity': recent_activity,
+            'system_metrics': system_metrics
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/users', methods=['POST'])
+@login_required
+@admin_required
+def admin_add_user():
+    """Add a new user from admin panel."""
+    try:
+        data = request.json
+        name = data.get('name')
+        email = data.get('email')
+        password = data.get('password')
+        is_admin = data.get('is_admin', False)
+
+        if not all([name, email, password]):
+            return jsonify({'success': False, 'message': 'Missing required fields.'}), 400
+
+        if get_user_by_email(email):
+            return jsonify({'success': False, 'message': 'Email already registered.'}), 400
+
+        hashed_password = generate_password_hash(password)
+        add_user(name, email, hashed_password, is_admin)
+
+        return jsonify({'success': True, 'message': 'User added successfully.'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/users/<int:user_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def admin_delete_user(user_id):
+    """Delete a user."""
+    try:
+        # Prevent admin from deleting themselves
+        if user_id == session.get('user_id'):
+            return jsonify({'success': False, 'message': "You cannot delete your own account."}), 400
+
+        delete_user(user_id)
+        return jsonify({'success': True, 'message': 'User deleted successfully.'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/videos/<int:video_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def admin_delete_video(video_id):
+    """Delete a video."""
+    try:
+        delete_video(video_id)
+        return jsonify({'success': True, 'message': 'Video deleted successfully.'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/settings', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_settings():
+    """Manage system settings."""
+    if request.method == 'POST':
+        try:
+            settings = request.json
+            for key, value in settings.items():
+                update_setting(key, value)
+            return jsonify({'success': True, 'message': 'Settings updated successfully.'})
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)}), 500
+    else:
+        try:
+            settings = {
+                'login_attempts': get_setting('login_attempts') or 3,
+                'session_timeout': get_setting('session_timeout') or 30,
+                'video_quality': get_setting('video_quality') or '1080p'
+            }
+            return jsonify(settings)
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/database', methods=['POST'])
+@login_required
+@admin_required
+def admin_database_action():
+    """Perform database actions."""
+    try:
+        action = request.json.get('action')
+        if action == 'backup':
+            backup_path = backup_database()
+            if backup_path:
+                return jsonify({'success': True, 'message': f'Database backup created at {backup_path}'})
+            else:
+                return jsonify({'success': False, 'message': 'Backup failed.'}), 500
+        elif action == 'optimize':
+            if optimize_database():
+                return jsonify({'success': True, 'message': 'Database optimized successfully.'})
+            else:
+                return jsonify({'success': False, 'message': 'Optimization failed.'}), 500
+        elif action == 'clear':
+            if clear_all_data():
+                return jsonify({'success': True, 'message': 'All data cleared successfully.'})
+            else:
+                return jsonify({'success': False, 'message': 'Failed to clear data.'}), 500
+        return jsonify({'success': False, 'message': 'Invalid action.'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/get_users')
+@login_required
+@admin_required
+def get_users_api():
+    users = get_all_users()
+    return jsonify(users)
+
+@app.route('/admin/get_videos')
+@login_required
+@admin_required
+def get_videos_api():
+    videos = get_all_videos()
+    return jsonify(videos)
 
 if __name__ == '__main__':
     uploads_folder = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'])

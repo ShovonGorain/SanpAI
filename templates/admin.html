@@ -45,27 +45,25 @@
 
             <div class="recent-activity">
                 <h3>Recent Activity</h3>
-                <div class="activity-list">
-                    <div class="activity-item">
-                        <i class="fas fa-user-plus"></i>
-                        <div class="activity-content">
-                            <p>New user registered: John Doe</p>
-                            <span>2 minutes ago</span>
-                        </div>
+                <div class="activity-list" id="activity-list">
+                    <!-- Activity items will be loaded dynamically -->
+                </div>
+            </div>
+
+            <div class="system-metrics">
+                <h3>System Metrics</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="cpu-usage">--%</div>
+                        <div class="metric-label">CPU Usage</div>
                     </div>
-                    <div class="activity-item">
-                        <i class="fas fa-video"></i>
-                        <div class="activity-content">
-                            <p>Video generated: Summer Vacation</p>
-                            <span>15 minutes ago</span>
-                        </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="memory-usage">--%</div>
+                        <div class="metric-label">Memory Usage</div>
                     </div>
-                    <div class="activity-item">
-                        <i class="fas fa-dollar-sign"></i>
-                        <div class="activity-content">
-                            <p>New subscription: Medium Plan</p>
-                            <span>1 hour ago</span>
-                        </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="disk-usage">--%</div>
+                        <div class="metric-label">Disk Usage</div>
                     </div>
                 </div>
             </div>
@@ -96,31 +94,15 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for user in users %}
-                    <tr>
-                        <td>{{ user.name }}</td>
-                        <td>{{ user.email }}</td>
-                        <td>{{ user.created_at }}</td>
-                        <td>{% if user.video_count %}{{ user.video_count }}{% else %}0{% endif %}</td>
-                        <td>
-                            <span class="status-badge {% if user.is_admin %}status-admin{% else %}status-active{% endif %}">
-                                {% if user.is_admin %}Admin{% else %}Active{% endif %}
-                            </span>
-                        </td>
-                        <td>
-                            <button class="btn btn-primary btn-sm view-user" data-id="{{ user.id }}">View</button>
-                            <button class="btn btn-danger btn-sm delete-user" data-id="{{ user.id }}">Delete</button>
-                        </td>
-                    </tr>
-                    {% endfor %}
+                <tbody id="user-table-body">
+                    <!-- User data will be loaded dynamically -->
                 </tbody>
             </table>
 
             <div class="pagination">
-                <button class="btn btn-sm"><i class="fas fa-chevron-left"></i></button>
-                <span class="page-info">Page 1 of 1</span>
-                <button class="btn btn-sm"><i class="fas fa-chevron-right"></i></button>
+                <button class="btn btn-sm" id="prev-user-page"><i class="fas fa-chevron-left"></i></button>
+                <span class="page-info" id="user-page-info">Page 1 of 1</span>
+                <button class="btn btn-sm" id="next-user-page"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
 
@@ -149,27 +131,15 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for video in videos %}
-                    <tr>
-                        <td>{{ video.title if video.title else "Untitled Video" }}</td>
-                        <td>{{ video.user_name if video.user_name else "Unknown User" }}</td>
-                        <td>{{ video.created_at }}</td>
-                        <td>{{ video.length if video.length else "N/A" }}</td>
-                        <td>{{ video.music_style if video.music_style else "Not specified" }}</td>
-                        <td>
-                            <button class="btn btn-primary btn-sm view-video" data-id="{{ video.id }}">View</button>
-                            <button class="btn btn-danger btn-sm delete-video" data-id="{{ video.id }}">Delete</button>
-                        </td>
-                    </tr>
-                    {% endfor %}
+                <tbody id="video-table-body">
+                    <!-- Video data will be loaded dynamically -->
                 </tbody>
             </table>
 
             <div class="pagination">
-                <button class="btn btn-sm"><i class="fas fa-chevron-left"></i></button>
-                <span class="page-info">Page 1 of 1</span>
-                <button class="btn btn-sm"><i class="fas fa-chevron-right"></i></button>
+                <button class="btn btn-sm" id="prev-video-page"><i class="fas fa-chevron-left"></i></button>
+                <span class="page-info" id="video-page-info">Page 1 of 1</span>
+                <button class="btn btn-sm" id="next-video-page"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
 
@@ -194,39 +164,34 @@
                     <h3><i class="fas fa-shield-alt"></i> Security Settings</h3>
                     <div class="setting-group">
                         <label for="login-attempts">Max Login Attempts</label>
-                        <input type="number" id="login-attempts" value="3" min="1" max="10">
+                        <input type="number" id="login-attempts" min="1" max="10">
                     </div>
                     <div class="setting-group">
                         <label for="session-timeout">Session Timeout (minutes)</label>
-                        <input type="number" id="session-timeout" value="30" min="5" max="1440">
+                        <input type="number" id="session-timeout" min="5" max="1440">
                     </div>
-                    <button class="btn btn-primary">Save Security Settings</button>
+                    <button class="btn btn-primary" id="save-security-settings">Save Security Settings</button>
                 </div>
 
                 <div class="settings-card">
                     <h3><i class="fas fa-cog"></i> System Configuration</h3>
                     <div class="setting-group">
-                        <label for="max-upload">Max Upload Size (MB)</label>
-                        <input type="number" id="max-upload" value="100" min="10" max="1024">
-                    </div>
-                    <div class="setting-group">
                         <label for="video-quality">Default Video Quality</label>
                         <select id="video-quality">
                             <option value="720p">720p</option>
-                            <option value="1080p" selected>1080p</option>
+                            <option value="1080p">1080p</option>
                             <option value="4k">4K</option>
                         </select>
                     </div>
-                    <button class="btn btn-primary">Save System Settings</button>
+                    <button class="btn btn-primary" id="save-system-settings">Save System Settings</button>
                 </div>
 
                 <div class="settings-card">
                     <h3><i class="fas fa-database"></i> Database Management</h3>
-                    <p>Current database size: 15.2 MB</p>
                     <div class="setting-actions">
-                        <button class="btn btn-primary">Backup Database</button>
-                        <button class="btn btn-secondary">Optimize Database</button>
-                        <button class="btn btn-danger">Clear All Data</button>
+                        <button class="btn btn-primary" id="backup-db">Backup Database</button>
+                        <button class="btn btn-secondary" id="optimize-db">Optimize Database</button>
+                        <button class="btn btn-danger" id="clear-db">Clear All Data</button>
                     </div>
                 </div>
             </div>
@@ -311,6 +276,124 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    function updateDashboard() {
+        fetch('/admin/dashboard_data')
+            .then(response => response.json())
+            .then(data => {
+                // Update stats
+                document.querySelector('.stat-card h3').textContent = data.total_users;
+                document.querySelectorAll('.stat-card h3')[1].textContent = data.total_videos;
+
+                // Update activity list
+                const activityList = document.getElementById('activity-list');
+                activityList.innerHTML = '';
+                data.recent_activity.forEach(item => {
+                    const iconClass = {
+                        user: 'fa-user-plus',
+                        video: 'fa-video',
+                        payment: 'fa-dollar-sign'
+                    }[item.type];
+
+                    activityList.innerHTML += `
+                        <div class="activity-item">
+                            <i class="fas ${iconClass}"></i>
+                            <div class="activity-content">
+                                <p>${item.message}</p>
+                                <span>${item.time}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                // Update system metrics
+                document.getElementById('cpu-usage').textContent = `${data.system_metrics.cpu_usage.toFixed(1)}%`;
+                document.getElementById('memory-usage').textContent = `${data.system_metrics.memory_usage.toFixed(1)}%`;
+                document.getElementById('disk-usage').textContent = `${data.system_metrics.disk_usage.toFixed(1)}%`;
+            })
+            .catch(error => console.error('Error fetching dashboard data:', error));
+    }
+
+    // Initial load and periodic refresh
+    updateDashboard();
+    setInterval(updateDashboard, 5000); // Refresh every 5 seconds
+
+    // User Management
+    const userSearch = document.getElementById('user-search');
+    const userTableBody = document.getElementById('user-table-body');
+    const userPageInfo = document.getElementById('user-page-info');
+    const prevUserPage = document.getElementById('prev-user-page');
+    const nextUserPage = document.getElementById('next-user-page');
+
+    let allUsers = [];
+    let userCurrentPage = 1;
+    const userRowsPerPage = 10;
+
+    function fetchUsers() {
+        fetch('/admin/get_users')
+            .then(response => response.json())
+            .then(data => {
+                allUsers = data;
+                renderUserTable();
+            });
+    }
+
+    function renderUserTable() {
+        const searchTerm = userSearch.value.toLowerCase();
+        const filteredUsers = allUsers.filter(user =>
+            user.name.toLowerCase().includes(searchTerm) ||
+            user.email.toLowerCase().includes(searchTerm)
+        );
+
+        const totalPages = Math.ceil(filteredUsers.length / userRowsPerPage);
+        userCurrentPage = Math.max(1, Math.min(userCurrentPage, totalPages));
+
+        const start = (userCurrentPage - 1) * userRowsPerPage;
+        const end = start + userRowsPerPage;
+        const paginatedUsers = filteredUsers.slice(start, end);
+
+        userTableBody.innerHTML = '';
+        paginatedUsers.forEach(user => {
+            userTableBody.innerHTML += `
+                <tr>
+                    <td>${user.name}</td>
+                    <td>${user.email}</td>
+                    <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                    <td>${user.video_count || 0}</td>
+                    <td>
+                        <span class="status-badge ${user.is_admin ? 'status-admin' : 'status-active'}">
+                            ${user.is_admin ? 'Admin' : 'Active'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-primary btn-sm view-user" data-id="${user.id}">View</button>
+                        <button class="btn btn-danger btn-sm delete-user" data-id="${user.id}">Delete</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        userPageInfo.textContent = `Page ${userCurrentPage} of ${totalPages}`;
+        prevUserPage.disabled = userCurrentPage === 1;
+        nextUserPage.disabled = userCurrentPage === totalPages;
+    }
+
+    userSearch.addEventListener('input', renderUserTable);
+    prevUserPage.addEventListener('click', () => {
+        if (userCurrentPage > 1) {
+            userCurrentPage--;
+            renderUserTable();
+        }
+    });
+    nextUserPage.addEventListener('click', () => {
+        const totalPages = Math.ceil(allUsers.length / userRowsPerPage);
+        if (userCurrentPage < totalPages) {
+            userCurrentPage++;
+            renderUserTable();
+        }
+    });
+
+    fetchUsers();
+
     // Admin navigation
     const adminNavLinks = document.querySelectorAll('.admin-nav-link');
     const adminSections = document.querySelectorAll('.admin-section');
@@ -415,36 +498,28 @@ document.addEventListener('DOMContentLoaded', function() {
         button.addEventListener('click', function() {
             const videoId = this.getAttribute('data-id');
             // In a real app, you would fetch video details from the server
+            const videoUrl = this.getAttribute('data-url');
             document.querySelector('.video-detail-content').innerHTML = `
-                <div class="video-detail-header">
-                    <div class="video-thumbnail">
-                        <i class="fas fa-film"></i>
-                    </div>
-                    <div class="video-info">
-                        <h4>Video #${videoId}</h4>
-                        <p>Created by User #${videoId}</p>
-                    </div>
-                </div>
-                <div class="video-detail-stats">
-                    <div class="stat">
-                        <span class="stat-value">45s</span>
-                        <span class="stat-label">Duration</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-value">1080p</span>
-                        <span class="stat-label">Resolution</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-value">25 MB</span>
-                        <span class="stat-label">Size</span>
-                    </div>
-                </div>
                 <div class="video-preview">
-                    <p>Video preview would be displayed here</p>
+                    <video controls width="100%">
+                        <source src="${videoUrl}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
                 </div>
             `;
             openModal('video-detail-modal');
+            document.getElementById('download-video-btn').setAttribute('data-url', videoUrl);
         });
+    });
+
+    document.getElementById('download-video-btn').addEventListener('click', function() {
+        const videoUrl = this.getAttribute('data-url');
+        const a = document.createElement('a');
+        a.href = videoUrl;
+        a.download = videoUrl.split('/').pop();
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     });
     
     // API key reveal
@@ -464,22 +539,259 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Delete buttons
-    const deleteButtons = document.querySelectorAll('.delete-user, .delete-video');
-    deleteButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const itemType = this.classList.contains('delete-user') ? 'user' : 'video';
-            const itemId = this.getAttribute('data-id');
-            
-            if (confirm(`Are you sure you want to delete this ${itemType}?`)) {
-                // In a real app, you would send a delete request to the server
-                console.log(`Deleting ${itemType} with ID: ${itemId}`);
-                // Simulate deletion
-                this.closest('tr').style.opacity = '0.5';
-                this.disabled = true;
-                this.textContent = 'Deleted';
+    // Add User
+    const addUserForm = document.getElementById('add-user-form');
+    const submitNewUser = document.getElementById('submit-new-user');
+
+    submitNewUser.addEventListener('click', () => {
+        const name = document.getElementById('new-user-name').value;
+        const email = document.getElementById('new-user-email').value;
+        const password = document.getElementById('new-user-password').value;
+        const role = document.getElementById('new-user-role').value;
+
+        fetch('/admin/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: name,
+                email: email,
+                password: password,
+                is_admin: role === 'admin'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                closeModal('add-user-modal');
+                addUserForm.reset();
+                fetchUsers(); // Refresh the table
+                alert('User added successfully');
+            } else {
+                alert(`Error: ${data.message}`);
             }
         });
+    });
+
+    // Delete User
+    userTableBody.addEventListener('click', function(e) {
+        if (e.target.classList.contains('delete-user')) {
+            const userId = e.target.getAttribute('data-id');
+            if (confirm(`Are you sure you want to delete user ${userId}?`)) {
+                fetch(`/admin/users/${userId}`, { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        fetchUsers(); // Refresh the table
+                        alert('User deleted successfully');
+                    } else {
+                        alert(`Error: ${data.message}`);
+                    }
+                });
+            }
+        }
+    });
+
+    // Video Management
+    const videoFilter = document.getElementById('video-filter');
+    const videoTableBody = document.getElementById('video-table-body');
+    const videoPageInfo = document.getElementById('video-page-info');
+    const prevVideoPage = document.getElementById('prev-video-page');
+    const nextVideoPage = document.getElementById('next-video-page');
+
+    let allVideos = [];
+    let videoCurrentPage = 1;
+    const videoRowsPerPage = 10;
+
+    function fetchVideos() {
+        fetch('/admin/get_videos')
+            .then(response => response.json())
+            .then(data => {
+                allVideos = data;
+                renderVideoTable();
+            });
+    }
+
+    function renderVideoTable() {
+        const filter = videoFilter.value;
+        let filteredVideos = allVideos;
+
+        if (filter === 'recent') {
+            filteredVideos.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        } else if (filter === 'popular') {
+            // Add your popularity logic here
+        }
+
+        const totalPages = Math.ceil(filteredVideos.length / videoRowsPerPage);
+        videoCurrentPage = Math.max(1, Math.min(videoCurrentPage, totalPages));
+
+        const start = (videoCurrentPage - 1) * videoRowsPerPage;
+        const end = start + videoRowsPerPage;
+        const paginatedVideos = filteredVideos.slice(start, end);
+
+        videoTableBody.innerHTML = '';
+        paginatedVideos.forEach(video => {
+            videoTableBody.innerHTML += `
+                <tr>
+                    <td>${video.title || 'Untitled'}</td>
+                    <td>${video.user_name}</td>
+                    <td>${new Date(video.created_at).toLocaleDateString()}</td>
+                    <td>${video.duration ? video.duration.toFixed(2) + 's' : 'N/A'}</td>
+                    <td>${video.music_style || 'N/A'}</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm view-video" data-id="${video.id}" data-url="/uploads/${video.video_url}">View</button>
+                        <button class="btn btn-danger btn-sm delete-video" data-id="${video.id}">Delete</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        videoPageInfo.textContent = `Page ${videoCurrentPage} of ${totalPages}`;
+        prevVideoPage.disabled = videoCurrentPage === 1;
+        nextVideoPage.disabled = videoCurrentPage === totalPages;
+    }
+
+    videoFilter.addEventListener('change', renderVideoTable);
+    prevVideoPage.addEventListener('click', () => {
+        if (videoCurrentPage > 1) {
+            videoCurrentPage--;
+            renderVideoTable();
+        }
+    });
+    nextVideoPage.addEventListener('click', () => {
+        const totalPages = Math.ceil(allVideos.length / videoRowsPerPage);
+        if (videoCurrentPage < totalPages) {
+            videoCurrentPage++;
+            renderVideoTable();
+        }
+    });
+
+    fetchVideos();
+
+    // Delete Video
+    videoTableBody.addEventListener('click', function(e) {
+        if (e.target.classList.contains('delete-video')) {
+            const videoId = e.target.getAttribute('data-id');
+            if (confirm(`Are you sure you want to delete video ${videoId}?`)) {
+                fetch(`/admin/videos/${videoId}`, { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        fetchVideos(); // Refresh the table
+                        alert('Video deleted successfully');
+                    } else {
+                        alert(`Error: ${data.message}`);
+                    }
+                });
+            }
+        }
+    });
+
+    // System Settings
+    function fetchSettings() {
+        fetch('/admin/settings')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('login-attempts').value = data.login_attempts;
+            document.getElementById('session-timeout').value = data.session_timeout;
+            document.getElementById('video-quality').value = data.video_quality;
+        });
+    }
+
+    fetchSettings();
+
+    document.getElementById('save-security-settings').addEventListener('click', () => {
+        const settings = {
+            login_attempts: document.getElementById('login-attempts').value,
+            session_timeout: document.getElementById('session-timeout').value
+        };
+        fetch('/admin/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Security settings saved.');
+            } else {
+                alert(`Error: ${data.message}`);
+            }
+        });
+    });
+
+    document.getElementById('save-system-settings').addEventListener('click', () => {
+        const settings = {
+            video_quality: document.getElementById('video-quality').value
+        };
+        fetch('/admin/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('System settings saved.');
+            } else {
+                alert(`Error: ${data.message}`);
+            }
+        });
+    });
+
+    document.getElementById('backup-db').addEventListener('click', () => {
+        if (confirm('Are you sure you want to back up the database?')) {
+            fetch('/admin/database', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'backup' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                } else {
+                    alert(`Error: ${data.message}`);
+                }
+            });
+        }
+    });
+
+    document.getElementById('optimize-db').addEventListener('click', () => {
+        if (confirm('Are you sure you want to optimize the database?')) {
+            fetch('/admin/database', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'optimize' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                } else {
+                    alert(`Error: ${data.message}`);
+                }
+            });
+        }
+    });
+
+    document.getElementById('clear-db').addEventListener('click', () => {
+        if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+            fetch('/admin/database', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'clear' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    fetchUsers();
+                    fetchVideos();
+                } else {
+                    alert(`Error: ${data.message}`);
+                }
+            });
+        }
     });
 });
 </script>
@@ -745,6 +1057,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .activity-content span {
     font-size: 12px;
+    color: #ccc;
+}
+
+.system-metrics {
+    margin-top: 30px;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 20px;
+}
+
+.metric-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.metric-value {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: var(--accent);
+}
+
+.metric-label {
+    font-size: 14px;
     color: #ccc;
 }
 </style>
