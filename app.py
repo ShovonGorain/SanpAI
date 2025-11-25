@@ -36,17 +36,28 @@ init_db()
 
 # Configure upload folder
 app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+# Set a generous but sane file size limit (e.g., 512MB) to prevent server overload.
+app.config['MAX_CONTENT_LENGTH'] = 512 * 1024 * 1024
 
 # Ensure upload folder exists
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
+
+from moviepy.video.fx.all import fadein, fadeout
+from moviepy.video.compositing.transitions import crossfadein, slide_in
 
 # Video Processor Class
 class VideoProcessor:
     def __init__(self, upload_folder):
         self.upload_folder = upload_folder
         self.effects = ['blur', 'contrast', 'black_white', 'sepia', 'vignette']
+        self.transitions = [
+            'fade',
+            'slide_in_left',
+            'slide_in_right',
+            'slide_in_top',
+            'slide_in_bottom'
+        ]
         
     def organize_images(self, image_paths):
         """Organize images by filename"""
@@ -129,26 +140,20 @@ class VideoProcessor:
             y, sr = librosa.load(music_path, sr=22050)
             
             # Apply style-specific processing
-            if style == 'pop':
-                y_fast = librosa.effects.time_stretch(y, rate=1.05)
-                return y_fast, sr
-            elif style == 'rock':
+            if style == 'rock':
+                # Increase volume for a punchier feel
                 y_strong = y * 1.2
                 return np.clip(y_strong, -1, 1), sr
             elif style == 'electronic':
-                # Add a simple beat
+                # Add a simple beat overlay
                 beat = np.zeros_like(y)
                 beat[::sr//4] = 0.1
                 y_electronic = y + beat
                 return np.clip(y_electronic, -1, 1), sr
-            elif style == 'hiphop':
-                y_slow = librosa.effects.time_stretch(y, rate=0.95)
-                return y_slow, sr
-            elif style == 'chill':
-                y_slow = librosa.effects.time_stretch(y, rate=0.9)
-                return y_slow, sr
-            else:
-                return y, sr
+
+            # For 'pop', 'hiphop', 'chill', and others, return the original audio
+            # to ensure the tune and tempo are not changed.
+            return y, sr
                 
         except Exception as e:
             print(f"Music processing error: {e}")
@@ -199,13 +204,16 @@ class VideoProcessor:
                     effect = random.choice(self.effects)
                     processed_img = self.apply_effect(img, effect)
                     
+                    # Convert to RGB if necessary before saving as JPG
+                    if processed_img.mode == 'RGBA':
+                        processed_img = processed_img.convert('RGB')
+
                     # Save processed image temporarily
                     temp_img_path = os.path.join(self.upload_folder, f"temp_{uuid.uuid4().hex}.jpg")
                     processed_img.save(temp_img_path, quality=85)
                     
                     # Create clip
                     clip = mp.ImageClip(temp_img_path).set_duration(duration_per_image)
-                    clip = clip.fx(fadein, 0.5).fx(fadeout, 0.5)
                     clips.append(clip)
                     
                     # Clean up temporary image
@@ -221,11 +229,31 @@ class VideoProcessor:
             if not clips:
                 return False, "No valid video clips created"
             
-            print(f"Created {len(clips)} clips, concatenating...")
+            print(f"Created {len(clips)} clips, applying transitions...")
+
+            # Create transitions
+            transition_duration = 0.5 # half a second
+            video_clips = []
+            start_time = 0
             
-            # Concatenate all clips
-            video = mp.concatenate_videoclips(clips, method="compose")
+            for i, clip in enumerate(clips):
+                if i > 0:
+                    # Apply a transition between the previous clip and the current one
+                    prev_clip = clips[i-1]
+                    transition_name = random.choice(self.transitions)
+
+                    if transition_name == 'fade':
+                        clip = clip.fx(crossfadein, transition_duration)
+                    elif transition_name.startswith('slide_in'):
+                        direction = transition_name.split('_')[-1]
+                        clip = clip.fx(slide_in, transition_duration, side=direction)
+
+                video_clips.append(clip.set_start(start_time))
+                start_time += clip.duration - transition_duration
             
+            # Compose the final video
+            video = mp.CompositeVideoClip(video_clips)
+
             # Add audio if available
             if audio_clip:
                 try:
@@ -258,11 +286,22 @@ class VideoProcessor:
                 audio_clip.close()
             
             print("Video created successfully!")
-            return True, "Video created successfully"
+
+            # Return video object along with metadata
+            duration = video.duration
+            resolution = f"{video.size[0]}x{video.size[1]}"
+            size = os.path.getsize(output_path) / (1024 * 1024)  # in MB
+
+            return True, "Video created successfully", {
+                'duration': duration,
+                'resolution': resolution,
+                'size': size,
+                'video_obj': video  # Pass the video object for thumbnail generation
+            }
             
         except Exception as e:
             print(f"Error in create_video: {e}")
-            return False, f"Video creation failed: {str(e)}"
+            return False, f"Video creation failed: {str(e)}", None
 
 # Initialize video processor
 video_processor = VideoProcessor(app.config['UPLOAD_FOLDER'])
@@ -351,6 +390,7 @@ def auth():
                 }
                 session['is_admin'] = user['is_admin']
                 session['is_paid'] = user['is_paid']
+                session.permanent = False
 
                 reset_login_attempts(email)
                 flash('Login successful!')
@@ -510,7 +550,7 @@ def generate_video():
         print(f"Starting video creation with {len(saved_files)} images...")
         
         # Create video using our processor
-        success, message = video_processor.create_video(
+        success, message, video_data = video_processor.create_video(
             saved_files,
             os.path.join(upload_dir, music_filename) if music_filename else None,
             music_style,
@@ -534,13 +574,26 @@ def generate_video():
                 'message': message
             })
         
-        # Add video to database
+        # Generate thumbnail
+        thumbnail_filename = f"{uuid.uuid4().hex}.jpg"
+        thumbnail_path = os.path.join(upload_dir, thumbnail_filename)
+        try:
+            video_data['video_obj'].save_frame(thumbnail_path, t=1.00) # Save frame at 1 second
+        except Exception as e:
+            print(f"Error generating thumbnail: {e}")
+            thumbnail_filename = None # Set to None if thumbnail fails
+
+        # Add video to database with all metadata
         add_video(
             user_id=session['user_id'],
             video_url=video_filename,
+            thumbnail_url=thumbnail_filename,
             music_style=music_style,
             title=f"Video_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}",
-            music_file=music_filename
+            music_file=music_filename,
+            duration=video_data.get('duration'),
+            resolution=video_data.get('resolution'),
+            size=video_data.get('size')
         )
 
         # Clean up uploaded photos
