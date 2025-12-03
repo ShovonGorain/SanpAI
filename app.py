@@ -3,8 +3,20 @@ from database import (
     init_db,
     add_user,
     get_user_by_email,
+    get_user_by_id,
     get_all_users,
     get_all_videos,
+    delete_user,
+    update_user_password,
+    update_user_info,
+    delete_video,
+    get_setting,
+    update_setting,
+    backup_database,
+    optimize_database,
+    clear_all_data,
+    add_activity,
+    get_recent_activity,
     increment_login_attempts,
     reset_login_attempts,
     get_login_attempts,
@@ -35,7 +47,8 @@ def make_session_permanent():
     session.permanent = True
 
 # Initialize DB
-init_db()
+from database import db
+db.init_app(app)
 
 # Configure upload folder
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -60,14 +73,8 @@ from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
 class VideoProcessor:
     def __init__(self, upload_folder):
         self.upload_folder = upload_folder
-        self.effects = ['blur', 'contrast', 'black_white', 'sepia', 'vignette', 'sharpen', 'solarize', 'invert', 'grayscale', 'colorize']
-        self.transitions = [
-            'fade',
-            'slide_in',
-            'slide_out',
-            'crossfade',
-            'wipe'
-        ]
+        self.effects = ['black_white', 'sepia', 'invert']
+        self.transitions = ['fade', 'crossfade']
         
     def organize_images(self, image_paths):
         """Organize images by filename"""
@@ -77,10 +84,10 @@ class VideoProcessor:
             pass
         return image_paths
     
-    def resize_image(self, image, max_size=(1920, 1080)):
+    def resize_image(self, image, max_size=(1280, 720)):
         """Resize image to fit within max_size while maintaining aspect ratio"""
         try:
-            image.thumbnail(max_size, Image.Resampling.LANCZOS)
+            image.thumbnail(max_size, Image.Resampling.NEAREST)
             return image
         except Exception as e:
             print(f"Error resizing image: {e}")
@@ -243,7 +250,8 @@ class VideoProcessor:
                 fps=24,
                 codec='libx264',
                 audio_codec='aac' if audio_clip else None,
-                threads=4
+                threads=os.cpu_count(),
+                preset='ultrafast'
             )
 
             # Clean up
@@ -393,6 +401,7 @@ def auth():
             
             success = add_user(name, email, hashed, False, False)
             if success:
+                add_activity('user', f'New user registered: {name}')
                 flash('Registration successful! Please login.')
                 return redirect(url_for('auth'))
             else:
@@ -416,6 +425,7 @@ def payment():
         update_payment_status(session['user_id'], True)
         session['is_paid'] = True
         session['user']['is_paid'] = True
+        add_activity('payment', f"New subscription for user {session['user']['name']}")
         
         flash('Payment successful! You can now access the dashboard.')
         return redirect(url_for('dashboard'))
@@ -564,6 +574,7 @@ def generate_video():
             resolution=video_data.get('resolution'),
             size=video_data.get('size')
         )
+        add_activity('video', f"Video created by user {session['user']['name']}")
 
         # Clean up uploaded photos
         for file_path in saved_files:
@@ -590,6 +601,15 @@ def generate_video():
 def download_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+@app.route('/videos/<int:video_id>/view')
+@login_required
+def view_video(video_id):
+    increment_video_views(video_id)
+    video = db.execute("SELECT video_url FROM videos WHERE id = ?", (video_id,)).fetchone()
+    if video:
+        return redirect(url_for('download_file', filename=video['video_url']))
+    return "Video not found", 404
+
 # Additional routes
 @app.route('/get-started')
 def get_started():
@@ -605,16 +625,223 @@ def get_started():
 @login_required
 @admin_required
 def admin_dashboard():
+    return render_template('admin.html')
+
+@app.route('/admin/dashboard_data')
+@login_required
+@admin_required
+def admin_dashboard_data():
+    """Fetch real-time dashboard data."""
     try:
-        users = get_all_users()
-        videos = get_all_videos()
-        total_users = len(users) if users else 0
-        total_reels = len(videos) if videos else 0
-        return render_template('admin.html', users=users, videos=videos,
-                               total_users=total_users, total_reels=total_reels)
+        # Get data from database
+        total_users = get_all_users()['total']
+        total_videos = get_all_videos()['total']
+
+        # Get recent activity
+        recent_activity = get_recent_activity()
+        for activity in recent_activity:
+            activity['created_at'] = activity['created_at'].isoformat()
+
+        # System metrics
+        system_metrics = {
+            'cpu_usage': psutil.cpu_percent(),
+            'memory_usage': psutil.virtual_memory().percent,
+            'disk_usage': psutil.disk_usage('/').percent
+        }
+
+        return jsonify({
+            'total_users': total_users,
+            'total_videos': total_videos,
+            'recent_activity': recent_activity,
+            'system_metrics': system_metrics
+        })
     except Exception as e:
-        flash('Error accessing admin panel: ' + str(e))
-        return redirect(url_for('index'))
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/users', methods=['POST'])
+@login_required
+@admin_required
+def admin_add_user():
+    """Add a new user from admin panel."""
+    try:
+        data = request.json
+        name = data.get('name')
+        email = data.get('email')
+        password = data.get('password')
+        is_admin = data.get('is_admin', False)
+
+        if not all([name, email, password]):
+            return jsonify({'success': False, 'message': 'Missing required fields.'}), 400
+
+        if get_user_by_email(email):
+            return jsonify({'success': False, 'message': 'Email already registered.'}), 400
+
+        hashed_password = generate_password_hash(password)
+        add_user(name, email, hashed_password, is_admin)
+
+        return jsonify({'success': True, 'message': 'User added successfully.'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/users/<int:user_id>', methods=['GET', 'DELETE', 'PUT'])
+@login_required
+@admin_required
+def admin_user(user_id):
+    """Get or delete a user."""
+    if request.method == 'GET':
+        try:
+            user = get_user_by_id(user_id)
+            if user:
+                user['created_at'] = user['created_at'].isoformat()
+                return jsonify(user)
+            else:
+                return jsonify({'success': False, 'message': 'User not found.'}), 404
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)}), 500
+    elif request.method == 'DELETE':
+        try:
+            # Prevent admin from deleting themselves
+            if user_id == session.get('user_id'):
+                return jsonify({'success': False, 'message': "You cannot delete your own account."}), 400
+
+            delete_user(user_id)
+            return jsonify({'success': True, 'message': 'User deleted successfully.'})
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)}), 500
+    elif request.method == 'PUT':
+        try:
+            data = request.json
+            if 'password' in data:
+                hashed_password = generate_password_hash(data['password'])
+                update_user_password(user_id, hashed_password)
+                return jsonify({'success': True, 'message': 'Password updated successfully.'})
+            elif 'name' in data and 'email' in data:
+                update_user_info(user_id, data['name'], data['email'])
+                return jsonify({'success': True, 'message': 'User information updated successfully.'})
+            return jsonify({'success': False, 'message': 'Invalid request.'}), 400
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/login_as/<int:user_id>')
+@login_required
+@admin_required
+def login_as_user(user_id):
+    """Login as another user."""
+    user = get_user_by_id(user_id)
+    if user:
+        session['user_id'] = user['id']
+        session['user'] = {
+            'id': user['id'],
+            'name': user['name'],
+            'email': user['email'],
+            'is_admin': user['is_admin'],
+            'is_paid': user['is_paid']
+        }
+        session['is_admin'] = user['is_admin']
+        session['is_paid'] = user['is_paid']
+        flash(f'You are now logged in as {user["name"]}.')
+        return redirect(url_for('dashboard'))
+    else:
+        flash('User not found.')
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/videos/<int:video_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def admin_delete_video(video_id):
+    """Delete a video."""
+    try:
+        delete_video(video_id)
+        return jsonify({'success': True, 'message': 'Video deleted successfully.'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/settings', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_settings():
+    """Manage system settings."""
+    if request.method == 'POST':
+        try:
+            settings = request.json
+            for key, value in settings.items():
+                update_setting(key, value)
+            return jsonify({'success': True, 'message': 'Settings updated successfully.'})
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)}), 500
+    else:
+        try:
+            settings = {
+                'login_attempts': get_setting('login_attempts') or 3,
+                'session_timeout': get_setting('session_timeout') or 30,
+                'video_quality': get_setting('video_quality') or '1080p'
+            }
+            return jsonify(settings)
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/database', methods=['POST'])
+@login_required
+@admin_required
+def admin_database_action():
+    """Perform database actions."""
+    try:
+        action = request.json.get('action')
+        if action == 'backup':
+            backup_path = backup_database()
+            if backup_path:
+                return jsonify({'success': True, 'message': f'Database backup created at {backup_path}'})
+            else:
+                return jsonify({'success': False, 'message': 'Backup failed.'}), 500
+        elif action == 'optimize':
+            if optimize_database():
+                return jsonify({'success': True, 'message': 'Database optimized successfully.'})
+            else:
+                return jsonify({'success': False, 'message': 'Optimization failed.'}), 500
+        elif action == 'clear':
+            if clear_all_data():
+                return jsonify({'success': True, 'message': 'All data cleared successfully.'})
+            else:
+                return jsonify({'success': False, 'message': 'Failed to clear data.'}), 500
+        return jsonify({'success': False, 'message': 'Invalid action.'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/get_users')
+@login_required
+@admin_required
+def get_users_api():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    search_query = request.args.get('search', None)
+
+    user_data = get_all_users(page=page, per_page=per_page, search_query=search_query)
+
+    # Convert datetime objects to string format
+    for user in user_data['users']:
+        if 'created_at' in user and user['created_at']:
+            user['created_at'] = user['created_at'].isoformat()
+
+    return jsonify(user_data)
+
+@app.route('/admin/get_videos')
+@login_required
+@admin_required
+def get_videos_api():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    filter_by = request.args.get('filter', None)
+
+    video_data = get_all_videos(page=page, per_page=per_page, filter_by=filter_by)
+
+    # Convert datetime objects to string format and construct full URL
+    for video in video_data['videos']:
+        if 'created_at' in video and video['created_at']:
+            video['created_at'] = video['created_at'].isoformat()
+        if 'video_url' in video and video['video_url']:
+            video['full_video_url'] = url_for('download_file', filename=video['video_url'], _external=True)
+
+    return jsonify(video_data)
 
 if __name__ == '__main__':
     uploads_folder = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'])
