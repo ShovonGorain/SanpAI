@@ -127,14 +127,14 @@ class Database:
 db = Database()
 
 # User functions
-def add_user(name, email, password_hash, is_admin=False, is_paid=False):
+def add_user(name, email, password_hash, is_admin=False):
     """Add a new user to the database"""
     try:
         conn = db.get_connection()
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO users (name, email, password_hash, is_admin, is_paid) VALUES (%s, %s, %s, %s, %s)",
-            (name, email, password_hash, is_admin, is_paid)
+            (name, email, password_hash, is_admin, False)
         )
         conn.commit()
         cursor.close()
