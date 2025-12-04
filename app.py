@@ -137,6 +137,14 @@ class VideoProcessor:
             elif effect_name == 'colorize':
                 # Apply a color tint
                 return ImageOps.colorize(img.convert('L'), black='blue', white='white')
+            elif effect_name == 'sharpen':
+                return img.filter(ImageFilter.SHARPEN)
+            elif effect_name == 'solarize':
+                return ImageOps.solarize(img)
+            elif effect_name == 'invert':
+                return ImageOps.invert(img)
+            elif effect_name == 'grayscale':
+                return img.convert('L').convert('RGB')
             
             return img
         except Exception as e:
