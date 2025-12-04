@@ -20,6 +20,11 @@ import datetime
 import uuid
 import random
 from PIL import Image, ImageFilter, ImageEnhance, ImageOps
+
+# Monkey patch Image.ANTIALIAS for compatibility with older moviepy versions
+if not hasattr(Image, 'ANTIALIAS'):
+    Image.ANTIALIAS = Image.Resampling.LANCZOS
+
 import moviepy.editor as mp
 from moviepy.video.fx.all import fadein, fadeout
 import numpy as np
