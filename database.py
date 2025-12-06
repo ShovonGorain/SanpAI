@@ -156,6 +156,32 @@ def get_user_by_email(email):
         print(f"❌ Error getting user: {e}")
         return None
 
+def get_user_by_id(user_id):
+    """Get user by ID"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+        cursor.close()
+        return user
+    except Error as e:
+        print(f"❌ Error getting user by ID: {e}")
+        return None
+
+def delete_user(user_id):
+    """Delete user by ID"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        conn.commit()
+        cursor.close()
+        return True
+    except Error as e:
+        print(f"❌ Error deleting user: {e}")
+        return False
+
 def get_all_users():
     """Get all users"""
     try:
@@ -262,6 +288,32 @@ def get_videos_by_user(user_id):
     except Error as e:
         print(f"❌ Error getting user videos: {e}")
         return []
+
+def get_video_by_id(video_id):
+    """Get video by ID"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM videos WHERE id = %s", (video_id,))
+        video = cursor.fetchone()
+        cursor.close()
+        return video
+    except Error as e:
+        print(f"❌ Error getting video by ID: {e}")
+        return None
+
+def delete_video(video_id):
+    """Delete video by ID"""
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM videos WHERE id = %s", (video_id,))
+        conn.commit()
+        cursor.close()
+        return True
+    except Error as e:
+        print(f"❌ Error deleting video: {e}")
+        return False
 
 def get_all_videos():
     """Get all videos from all users"""
