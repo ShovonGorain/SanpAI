@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Create Video{% endblock %}
+
+{% block content %}
+<div class="create-container">
+    <h2>Create New Video</h2>
+    <form id="create-video-form" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="photos">Upload Photos (5-10)</label>
+            <input type="file" id="photos" name="photos" multiple accept="image/*" required>
+        </div>
+        <div class="form-group">
+            <label for="custom_music">Upload Music (Optional)</label>
+            <input type="file" id="custom_music" name="custom_music" accept="audio/*">
+        </div>
+        <button type="submit" class="btn btn-primary" id="generate-btn">Generate Video</button>
+    </form>
+    <div id="progress-container" style="display:none;">
+        <p>Generating video... Please wait.</p>
+    </div>
+</div>
+
+<script>
+document.getElementById('create-video-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const btn = document.getElementById('generate-btn');
+    const progress = document.getElementById('progress-container');
+    
+    btn.disabled = true;
+    progress.style.display = 'block';
+    
+    fetch('/generate_video', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        btn.disabled = false;
+        progress.style.display = 'none';
+        if (data.success) {
+            alert('Video created! ' + data.message);
+            window.location.href = '/dashboard';
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        progress.style.display = 'none';
+        console.error('Error:', error);
+        alert('An error occurred.');
+    });
+});
+</script>
+{% endblock %}

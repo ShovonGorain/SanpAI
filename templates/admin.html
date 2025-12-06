@@ -369,43 +369,90 @@ document.addEventListener('DOMContentLoaded', function() {
             openModal('add-user-modal');
         });
     }
+
+    // Submit new user
+    const submitNewUserBtn = document.getElementById('submit-new-user');
+    if (submitNewUserBtn) {
+        submitNewUserBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-user-name').value;
+            const email = document.getElementById('new-user-email').value;
+            const password = document.getElementById('new-user-password').value;
+            const role = document.getElementById('new-user-role').value;
+
+            if (!name || !email || !password) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            fetch('/admin/add_user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name, email, password, role }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('User added successfully');
+                    location.reload(); // Refresh to show new user
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while adding the user.');
+            });
+        });
+    }
     
     // View user buttons
     const viewUserButtons = document.querySelectorAll('.view-user');
     viewUserButtons.forEach(button => {
         button.addEventListener('click', function() {
             const userId = this.getAttribute('data-id');
-            // In a real app, you would fetch user details from the server
-            document.querySelector('.user-detail-content').innerHTML = `
-                <div class="user-detail-header">
-                    <div class="user-avatar">
-                        <i class="fas fa-user-circle"></i>
-                    </div>
-                    <div class="user-info">
-                        <h4>User #${userId}</h4>
-                        <p>user${userId}@example.com</p>
-                    </div>
-                </div>
-                <div class="user-detail-stats">
-                    <div class="stat">
-                        <span class="stat-value">15</span>
-                        <span class="stat-label">Videos Created</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-value">3</span>
-                        <span class="stat-label">Subscription</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-value">2023-10-15</span>
-                        <span class="stat-label">Joined</span>
-                    </div>
-                </div>
-                <div class="user-detail-actions">
-                    <button class="btn btn-sm btn-danger">Reset Password</button>
-                    <button class="btn btn-sm btn-secondary">Login as User</button>
-                </div>
-            `;
-            openModal('user-detail-modal');
+            
+            fetch(`/admin/get_user/${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const user = data.user;
+                        document.querySelector('.user-detail-content').innerHTML = `
+                            <div class="user-detail-header">
+                                <div class="user-avatar">
+                                    <i class="fas fa-user-circle"></i>
+                                </div>
+                                <div class="user-info">
+                                    <h4>${user.name} (ID: ${user.id})</h4>
+                                    <p>${user.email}</p>
+                                </div>
+                            </div>
+                            <div class="user-detail-stats">
+                                <div class="stat">
+                                    <span class="stat-value">${user.video_count || 0}</span>
+                                    <span class="stat-label">Videos Created</span>
+                                </div>
+                                <div class="stat">
+                                    <span class="stat-value">${user.is_paid ? 'Paid' : 'Free'}</span>
+                                    <span class="stat-label">Subscription</span>
+                                </div>
+                                <div class="stat">
+                                    <span class="stat-value">${new Date(user.created_at).toLocaleDateString()}</span>
+                                    <span class="stat-label">Joined</span>
+                                </div>
+                            </div>
+                            <div class="user-detail-actions">
+                                <button class="btn btn-sm btn-secondary">Login as User</button>
+                            </div>
+                        `;
+                        openModal('user-detail-modal');
+                    } else {
+                        alert('Error fetching user details: ' + data.message);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
         });
     });
     
@@ -414,36 +461,59 @@ document.addEventListener('DOMContentLoaded', function() {
     viewVideoButtons.forEach(button => {
         button.addEventListener('click', function() {
             const videoId = this.getAttribute('data-id');
-            // In a real app, you would fetch video details from the server
-            document.querySelector('.video-detail-content').innerHTML = `
-                <div class="video-detail-header">
-                    <div class="video-thumbnail">
-                        <i class="fas fa-film"></i>
-                    </div>
-                    <div class="video-info">
-                        <h4>Video #${videoId}</h4>
-                        <p>Created by User #${videoId}</p>
-                    </div>
-                </div>
-                <div class="video-detail-stats">
-                    <div class="stat">
-                        <span class="stat-value">45s</span>
-                        <span class="stat-label">Duration</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-value">1080p</span>
-                        <span class="stat-label">Resolution</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-value">25 MB</span>
-                        <span class="stat-label">Size</span>
-                    </div>
-                </div>
-                <div class="video-preview">
-                    <p>Video preview would be displayed here</p>
-                </div>
-            `;
-            openModal('video-detail-modal');
+            
+            fetch(`/admin/get_video/${videoId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const video = data.video;
+                        document.querySelector('.video-detail-content').innerHTML = `
+                            <div class="video-detail-header">
+                                <div class="video-thumbnail">
+                                    <i class="fas fa-film"></i>
+                                </div>
+                                <div class="video-info">
+                                    <h4>${video.title || 'Untitled'} (ID: ${video.id})</h4>
+                                    <p>Created by User ID: ${video.user_id}</p>
+                                </div>
+                            </div>
+                            <div class="video-detail-stats">
+                                <div class="stat">
+                                    <span class="stat-value">${video.duration ? video.duration.toFixed(1) + 's' : 'N/A'}</span>
+                                    <span class="stat-label">Duration</span>
+                                </div>
+                                <div class="stat">
+                                    <span class="stat-value">${video.resolution || 'N/A'}</span>
+                                    <span class="stat-label">Resolution</span>
+                                </div>
+                                <div class="stat">
+                                    <span class="stat-value">${video.size ? video.size.toFixed(2) + ' MB' : 'N/A'}</span>
+                                    <span class="stat-label">Size</span>
+                                </div>
+                            </div>
+                            <div class="video-preview">
+                                ${video.video_url ? `<a href="/uploads/${video.video_url}" target="_blank" class="btn btn-primary">Watch Video</a>` : '<p>No preview available</p>'}
+                            </div>
+                        `;
+                        
+                        // Setup download button in modal footer if needed
+                        const downloadBtn = document.getElementById('download-video-btn');
+                        if (downloadBtn) {
+                            downloadBtn.onclick = function() {
+                                if (video.video_url) {
+                                    window.open(`/uploads/${video.video_url}`, '_blank');
+                                } else {
+                                    alert('Video file not found');
+                                }
+                            };
+                        }
+                        
+                        openModal('video-detail-modal');
+                    } else {
+                        alert('Error fetching video details: ' + data.message);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
         });
     });
     
@@ -470,14 +540,33 @@ document.addEventListener('DOMContentLoaded', function() {
         button.addEventListener('click', function() {
             const itemType = this.classList.contains('delete-user') ? 'user' : 'video';
             const itemId = this.getAttribute('data-id');
+            const url = itemType === 'user' ? `/admin/delete_user/${itemId}` : `/admin/delete_video/${itemId}`;
             
             if (confirm(`Are you sure you want to delete this ${itemType}?`)) {
-                // In a real app, you would send a delete request to the server
-                console.log(`Deleting ${itemType} with ID: ${itemId}`);
-                // Simulate deletion
-                this.closest('tr').style.opacity = '0.5';
-                this.disabled = true;
-                this.textContent = 'Deleted';
+                fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Remove row from table
+                        const row = this.closest('tr');
+                        row.style.transition = 'all 0.5s ease';
+                        row.style.opacity = '0';
+                        setTimeout(() => {
+                            row.remove();
+                        }, 500);
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while deleting.');
+                });
             }
         });
     });

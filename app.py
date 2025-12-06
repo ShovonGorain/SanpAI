@@ -10,7 +10,11 @@ from database import (
     get_login_attempts,
     add_video,
     get_videos_by_user,
-    update_payment_status
+    update_payment_status,
+    get_user_by_id,
+    delete_user,
+    get_video_by_id,
+    delete_video
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
@@ -20,6 +24,11 @@ import datetime
 import uuid
 import random
 from PIL import Image, ImageFilter, ImageEnhance, ImageOps
+
+# Monkey patch Image.ANTIALIAS for compatibility with older moviepy versions
+if not hasattr(Image, 'ANTIALIAS'):
+    Image.ANTIALIAS = Image.Resampling.LANCZOS
+
 import moviepy.editor as mp
 from moviepy.video.fx.all import fadein, fadeout
 import numpy as np
@@ -615,6 +624,87 @@ def admin_dashboard():
     except Exception as e:
         flash('Error accessing admin panel: ' + str(e))
         return redirect(url_for('index'))
+
+@app.route('/admin/get_user/<int:user_id>')
+@login_required
+@admin_required
+def get_user(user_id):
+    user = get_user_by_id(user_id)
+    if user:
+        # Convert timestamp to string
+        if user.get('created_at'):
+            user['created_at'] = str(user['created_at'])
+        if user.get('last_attempt'):
+            user['last_attempt'] = str(user['last_attempt'])
+        
+        # Get user video count
+        videos = get_videos_by_user(user_id)
+        user['video_count'] = len(videos)
+        
+        return jsonify({'success': True, 'user': user})
+    return jsonify({'success': False, 'message': 'User not found'})
+
+@app.route('/admin/add_user', methods=['POST'])
+@login_required
+@admin_required
+def admin_add_user():
+    try:
+        data = request.json
+        name = data.get('name')
+        email = data.get('email')
+        password = data.get('password')
+        role = data.get('role', 'user')
+        
+        if not name or not email or not password:
+            return jsonify({'success': False, 'message': 'Missing required fields'})
+            
+        if get_user_by_email(email):
+            return jsonify({'success': False, 'message': 'Email already registered'})
+            
+        hashed = generate_password_hash(password)
+        is_admin = (role == 'admin')
+        
+        # By default give paid access to manually added users if needed, or default to False
+        is_paid = False
+        
+        if add_user(name, email, hashed, is_admin, is_paid):
+            return jsonify({'success': True, 'message': 'User added successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Database error'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/admin/delete_user/<int:user_id>', methods=['POST', 'DELETE'])
+@login_required
+@admin_required
+def admin_delete_user(user_id):
+    # Prevent deleting self
+    if user_id == session['user_id']:
+        return jsonify({'success': False, 'message': 'Cannot delete your own admin account'})
+        
+    if delete_user(user_id):
+        return jsonify({'success': True, 'message': 'User deleted successfully'})
+    return jsonify({'success': False, 'message': 'Failed to delete user'})
+
+@app.route('/admin/get_video/<int:video_id>')
+@login_required
+@admin_required
+def get_video(video_id):
+    video = get_video_by_id(video_id)
+    if video:
+        if video.get('created_at'):
+            video['created_at'] = str(video['created_at'])
+        return jsonify({'success': True, 'video': video})
+    return jsonify({'success': False, 'message': 'Video not found'})
+
+@app.route('/admin/delete_video/<int:video_id>', methods=['POST', 'DELETE'])
+@login_required
+@admin_required
+def admin_delete_video(video_id):
+    if delete_video(video_id):
+        return jsonify({'success': True, 'message': 'Video deleted successfully'})
+    return jsonify({'success': False, 'message': 'Failed to delete video'})
 
 if __name__ == '__main__':
     uploads_folder = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'])
